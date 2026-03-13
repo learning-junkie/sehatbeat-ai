@@ -61,11 +61,9 @@ const Medicine = () => {
   // Voice search (speech-to-text) for medicine search bar
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const AnyWindow = window as unknown as {
-      SpeechRecognition?: typeof SpeechRecognition;
-      webkitSpeechRecognition?: typeof SpeechRecognition;
-    };
-    const SR = AnyWindow.SpeechRecognition || AnyWindow.webkitSpeechRecognition;
+    const AnyWindow = window as any;
+    const SR =
+      AnyWindow.SpeechRecognition || AnyWindow.webkitSpeechRecognition;
     if (!SR) {
       searchRecognitionRef.current = null;
       return;
@@ -84,9 +82,10 @@ const Medicine = () => {
     }
     r.lang = lang;
 
-    r.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0]?.transcript ?? "")
+    r.onresult = (event: any) => {
+      const results = Array.from(event.results || []);
+      const transcript = results
+        .map((result: any) => result[0]?.transcript ?? "")
         .join(" ")
         .trim();
       if (transcript) {
