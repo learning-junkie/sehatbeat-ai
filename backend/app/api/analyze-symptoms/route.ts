@@ -4,6 +4,9 @@ export async function POST(req: NextRequest) {
   const { symptoms, language } = await req.json();
   const isHindi = language === "hi";
 
+  // FIX 1 — Log every incoming request so we can confirm backend receives it
+  console.log("SehatBeat API hit:", { symptoms, language });
+
   // ── Fallbacks ────────────────────────────────────────────────────────────────
   const fallback = {
     problem: isHindi ? "सेवा अनुपलब्ध" : "Service Unavailable",
@@ -27,7 +30,7 @@ export async function POST(req: NextRequest) {
   const systemPrompt = isHindi
     ? `आप SehatBeat AI हैं — एक विशेषज्ञ, सहानुभूतिपूर्ण भारतीय चिकित्सा सहायक।
 नीचे दिए गए JSON प्रारूप में ही जवाब दें। JSON के बाहर कुछ भी मत लिखें।
-यदि उपयोगकर्ता ने गलत वर्तनी (typo) की है, तो उसे सुधार कर समझें।
+महत्वपूर्ण: यदि उपयोगकर्ता ने गलत वर्तनी की है या टाइपो किया है, तो उसे समझकर सही करें और फिर विश्लेषण करें। कभी भी गलत वर्तनी के कारण प्रश्न को अस्वीकार न करें। उदाहरण: faver=fever, hedache=headache, stomik=stomach, chst=chest, brakhing=breathing।
 
 JSON schema:
 {
@@ -52,7 +55,7 @@ severityLevel नियम:
 
     : `You are SehatBeat AI — an expert, empathetic Indian medical assistant.
 Respond ONLY in valid JSON matching the schema below. Nothing outside the JSON.
-If the user made a typo or spelling mistake in symptoms, intelligently correct and interpret it.
+IMPORTANT: If the user made spelling mistakes or typos, intelligently correct them before analysis. Common corrections: faver/fver=fever, hedache/headche=headache, chst/chset=chest, brakhing/brething=breathing, stomik/stomic=stomach, thoat=throat, coff=cough, diarea=diarrhea, vomit/vommit=vomiting, weekness=weakness, dizznes=dizziness. Never reject or fail a query due to spelling errors — always interpret the most likely intended symptom and analyze it.
 Provide thorough, detailed medical analysis in English.
 
 JSON schema (all fields required):
@@ -77,8 +80,7 @@ severityLevel rules:
 - mild: minor self-limiting symptoms → home remedies sufficient
 
 For doctorDirection always include: urgency timeline, specific tests to request, what to describe to doctor.
-For specialist be specific: Cardiologist, Pulmonologist, Gastroenterologist, ENT, Dermatologist, General Physician etc.
-Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache", "stomic" as "stomach" etc.`;
+For specialist be specific: Cardiologist, Pulmonologist, Gastroenterologist, ENT, Dermatologist, General Physician etc.`;
 
   // ── Helper: parse AI JSON response ──────────────────────────────────────────
   function parseAIResponse(raw: string) {
@@ -139,9 +141,13 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
           }
         }
       }
-    } catch {
-      // Gemini network error — fall through to Perplexity
+    } catch (err) {
+      // FIX 7 — Log Gemini failures; never let it throw
+      console.warn("Gemini call failed, falling back to Perplexity:", err);
     }
+  } else {
+    // FIX 7 — Warn if key is missing
+    console.warn("GEMINI_API_KEY not set — skipping Gemini");
   }
 
   // ── Fallback: Perplexity ─────────────────────────────────────────────────────
@@ -184,11 +190,15 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
           }
         }
       }
-    } catch {
-      // Perplexity also failed
+    } catch (err) {
+      // FIX 7 — Log Perplexity failures; never let it throw
+      console.warn("Perplexity call failed, using static fallback:", err);
     }
+  } else {
+    // FIX 7 — Warn if Perplexity key is missing
+    console.warn("PERPLEXITY_API_KEY not set — using static fallback");
   }
 
-  // ── Static fallback ──────────────────────────────────────────────────────────
+  // ── Static fallback — always returns valid JSON, never a 500 ────────────────
   return NextResponse.json(fallback);
 }

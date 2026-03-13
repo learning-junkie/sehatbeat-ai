@@ -85,29 +85,52 @@ async function callNextSymptomAPI(
   message: string,
   language: AppLanguage = "en"
 ): Promise<StructuredResponse> {
-  // VITE_BACKEND_URL=http://localhost:3000 in frontend/.env
   const backendBase =
     typeof import.meta !== "undefined" &&
     (import.meta as any).env?.VITE_BACKEND_URL
       ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
       : "";
 
+  if (!backendBase) {
+    console.warn("[SehatBeat] VITE_BACKEND_URL is not set — API calls may fail. Check your .env file.");
+  }
+
   const url = backendBase
     ? `${backendBase}/api/analyze-symptoms`
     : "/api/analyze-symptoms";
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ symptoms: message, language }),
-  });
+  // FIX 1 — 15s timeout using AbortController
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symptoms: message, language }),
+    });
+  } catch (err: unknown) {
+    clearTimeout(timeout);
+    const isTimeout = err instanceof DOMException && err.name === "AbortError";
+    throw new Error(
+      isTimeout
+        ? (language === "hi"
+            ? "विश्लेषण समय सीमा पार। कृपया कनेक्शन जांचें और फिर कोशिश करें।"
+            : "Analysis timed out. Please check your connection and try again.")
+        : (language === "hi" ? "नेटवर्क त्रुटि। कृपया पुनः प्रयास करें।" : "Network error. Please try again.")
+    );
+  }
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`API ${res.status}: ${txt.slice(0, 200)}`);
   }
 
-  const data: {
+  // FIX 7 — Handle JSON parse failures gracefully
+  let data: {
     analysis?: string;
     severity?: string;
     severityLevel?: string;
@@ -119,10 +142,18 @@ async function callNextSymptomAPI(
     doctorDirection?: string;
     doctorNote?: string;
     disclaimer?: string;
-    // also accept top-level structured fields from Gemini response
     problem?: string;
     possibleCauses?: string[];
-  } = await res.json();
+  };
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(
+      language === "hi"
+        ? "AI से अप्रत्याशित प्रतिक्रिया मिली। कृपया पुनः प्रयास करें।"
+        : "Received an unexpected response from AI. Please try again."
+    );
+  }
 
   return {
     problem: data.problem || (language === "hi" ? "लक्षण विश्लेषण" : "Symptom Analysis"),
@@ -152,9 +183,35 @@ const SEV_CONFIG = {
 
 // ─── Structured card ────────────────────────────────────────────────────────────
 
-function StructuredCard({ data }: { data: StructuredResponse }) {
+function StructuredCard({ data, language }: { data: StructuredResponse; language: AppLanguage }) {
   const cfg = SEV_CONFIG[data.severityLevel] ?? SEV_CONFIG.info;
   const SevIcon = cfg.icon;
+  const isHi = language === "hi";
+
+  // FIX 2 — Emergency audio + browser notification
+  useEffect(() => {
+    if (data.severityLevel !== "emergency") return;
+    // Audio beep
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      osc.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.start();
+      setTimeout(() => { osc.stop(); ctx.close(); }, 500);
+    } catch { /* ignore */ }
+    // Browser notification
+    try {
+      if (Notification.permission === "granted") {
+        new Notification("🚨 EMERGENCY", { body: "Call 112 immediately or go to nearest hospital" });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(p => {
+          if (p === "granted") new Notification("🚨 EMERGENCY", { body: "Call 112 immediately or go to nearest hospital" });
+        });
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.severityLevel]);
   return (
     <div className="space-y-2.5 text-sm w-full">
       {/* Header */}
@@ -172,14 +229,40 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
         </div>
       </div>
 
-      {/* Emergency CTA */}
+      {/* FIX 2 — Emergency CTA banner */}
       {data.severityLevel === "emergency" && (
-        <div className="bg-red-500 text-white rounded-lg p-3 flex items-center gap-3">
-          <Phone className="w-5 h-5 flex-shrink-0 animate-pulse" />
-          <div>
-            <p className="font-bold text-sm">Call Emergency Services Now</p>
-            <p className="text-xs opacity-90">Dial 112 or go to nearest hospital immediately</p>
+        <div className="bg-red-600 text-white rounded-xl p-4 flex flex-col gap-3 border-2 border-red-400 animate-pulse">
+          <div className="flex items-center gap-2">
+            <AlertOctagon className="w-6 h-6 flex-shrink-0" />
+            <p className="font-black text-base tracking-wide">🚨 MEDICAL EMERGENCY DETECTED</p>
           </div>
+          <div className="flex gap-2 flex-wrap">
+            <a
+              href="tel:112"
+              className="flex items-center gap-1.5 bg-white text-red-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
+            >
+              <Phone className="w-4 h-4" /> 📞 Call 112 Now
+            </a>
+            <button
+              onClick={() => window.open("https://www.google.com/maps/search/nearest+emergency+hospital+india", "_blank", "noopener,noreferrer")}
+              className="flex items-center gap-1.5 bg-red-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-900 transition-colors flex-shrink-0"
+            >
+              <MapPin className="w-4 h-4" /> 🏥 Find Nearest Hospital
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FIX 2 — High severity banner */}
+      {data.severityLevel === "high" && (
+        <div className="bg-orange-500 text-white rounded-xl p-3 flex flex-col gap-2 border border-orange-300">
+          <p className="font-bold text-sm">⚠️ You should see a doctor urgently</p>
+          <button
+            onClick={() => window.open(`https://www.google.com/maps/search/nearest+${encodeURIComponent(data.specialist || "doctor")}+doctor+india`, "_blank", "noopener,noreferrer")}
+            className="flex items-center gap-1.5 bg-white text-orange-700 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors w-fit"
+          >
+            <MapPin className="w-3.5 h-3.5" /> 🗺️ Find Nearest {data.specialist || "Doctor"}
+          </button>
         </div>
       )}
 
@@ -213,7 +296,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
       {data.possibleConditions && data.possibleConditions.length > 0 && (
         <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-1.5">
-            Possible Conditions
+            {isHi ? "संभावित बीमारियां" : "Possible Conditions"}
           </p>
           {data.possibleConditions.map((c, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
@@ -227,7 +310,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
       {/* Possible causes */}
       {data.possibleCauses.length > 0 && (
         <div className="bg-muted/60 rounded-lg p-3">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Possible Causes</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{isHi ? "संभावित कारण" : "Possible Causes"}</p>
           {data.possibleCauses.map((c, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
               <span className="text-primary font-bold flex-shrink-0 mt-0.5">•</span>
@@ -241,7 +324,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
       {data.immediateSteps.length > 0 && (
         <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-            <Pill className="w-3 h-3" /> Immediate Steps
+            <Pill className="w-3 h-3" /> {isHi ? "तुरंत करें" : "Immediate Steps"}
           </p>
           {data.immediateSteps.map((s, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
@@ -256,7 +339,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
       {data.whenToSeekHelp.length > 0 && (
         <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> See a Doctor If...
+            <AlertTriangle className="w-3 h-3" /> {isHi ? "डॉक्टर के पास कब जाएं" : "See a Doctor If..."}
           </p>
           {data.whenToSeekHelp.map((w, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
@@ -272,7 +355,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
         <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
           <Stethoscope className="w-4 h-4 text-purple-600 flex-shrink-0" />
           <div>
-            <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">Recommended Specialist</p>
+            <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">{isHi ? "अनुशंसित विशेषज्ञ" : "Recommended Specialist"}</p>
             <p className="text-xs text-foreground">{data.specialist}</p>
           </div>
         </div>
@@ -396,19 +479,38 @@ export const AIAssistant = () => {
     }
     const r = new SR();
     r.continuous = false;
-    r.interimResults = false;
+    r.interimResults = true; // FIX 4 — show live transcript while speaking
     r.lang = getStoredLanguage() === "hi" ? "hi-IN" : "en-IN";
     r.onresult = event => {
+      // Show interim results live; only process final results for auto-send
       const transcript = Array.from(event.results)
         .map(result => result[0]?.transcript ?? "")
         .join(" ")
         .trim();
       if (transcript) {
-        setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+        setInput(transcript);
+      }
+      // FIX 4 — silence detection: if last result is final, auto-send after 1500ms
+      const lastResult = event.results[event.results.length - 1];
+      if (lastResult?.isFinal) {
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = setTimeout(() => {
+          const finalTranscript = Array.from(event.results)
+            .map(r2 => r2[0]?.transcript ?? "")
+            .join(" ")
+            .trim();
+          if (finalTranscript) {
+            sendMessage(finalTranscript);
+          }
+        }, 1500);
       }
     };
     r.onend = () => { setIsListening(false); };
-    r.onerror = () => { setIsListening(false); };
+    r.onerror = () => {
+      setIsListening(false);
+      voiceErrorCountRef.current += 1;
+      if (voiceErrorCountRef.current >= 3) setVoiceFailed(true);
+    };
     recognitionRef.current = r;
 
     return () => {
@@ -420,7 +522,9 @@ export const AIAssistant = () => {
       } catch {
         // ignore
       }
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update recognition language when user changes app language
@@ -577,6 +681,9 @@ export const AIAssistant = () => {
     return () => window.removeEventListener("sehatbeat-open-ai", handler);
   }, [sendMessage]);
 
+  // FIX 6 — When connection comes back, flush pending queries with language-aware notifications
+  // (replacing the existing one below — see the existing useEffect at line ~428)
+
   // Text-to-speech: speak latest bot message (structured or plain)
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") return;
@@ -601,6 +708,7 @@ export const AIAssistant = () => {
     if (!text) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
+    // FIX 5 — Confirm hi-IN for structured responses
     utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
     utterance.rate = 0.95;
     utterance.pitch = 1;

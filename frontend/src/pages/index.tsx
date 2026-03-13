@@ -82,6 +82,9 @@ const Index = () => {
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center space-y-4 mb-16">
+            <div className="inline-flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300 text-sm font-semibold px-4 py-1.5 rounded-full mb-2">
+              🇮🇳 India's Health OS
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               Complete Healthcare Management
             </h2>
