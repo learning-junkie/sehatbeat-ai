@@ -6,7 +6,7 @@ import {
   X, Send, Bot, User, Minimize2, Maximize2,
   AlertTriangle, CheckCircle, AlertCircle, AlertOctagon,
   Info, Stethoscope, Pill, Activity, Phone, Clock,
-  MessageCircle, Sparkles, Mic, MicOff,
+  MessageCircle, Sparkles, Mic, MicOff, MapPin,
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import { useNetwork } from "@/hooks/useNetwork";
@@ -22,9 +22,11 @@ interface StructuredResponse {
   severity: string;
   severityLevel: "emergency" | "high" | "moderate" | "mild" | "info";
   possibleCauses: string[];
+  possibleConditions: string[];
   immediateSteps: string[];
   whenToSeekHelp: string[];
   specialist: string;
+  doctorDirection: string;
   disclaimer: string;
 }
 
@@ -91,30 +93,38 @@ async function callNextSymptomAPI(
   const data: {
     analysis: string;
     severity: string;
+    severityLevel: string;
+    possibleConditions: string[];
     recommendations: string[];
+    whenToSeekHelp: string[];
+    specialist: string;
+    doctorDirection: string;
+    disclaimer: string;
   } = await res.json();
 
   return {
-    problem: "Symptom Analysis",
+    problem: language === "hi" ? "लक्षण विश्लेषण" : "Symptom Analysis",
     severity: data.severity || "Overall severity could not be determined precisely.",
-    severityLevel: mapSeverityLevel(data.severity),
+    severityLevel: mapSeverityLevel(data.severityLevel || data.severity),
     possibleCauses: [],
+    possibleConditions: data.possibleConditions ?? [],
     immediateSteps: data.recommendations ?? [],
-    whenToSeekHelp: [],
-    specialist: "Nearest doctor or health centre",
-    disclaimer:
-      "This AI-generated triage is informational only and must not replace an in-person consultation with a qualified healthcare professional, especially if symptoms are severe or worsening.",
+    whenToSeekHelp: data.whenToSeekHelp ?? [],
+    specialist: data.specialist || (language === "hi" ? "सामान्य चिकित्सक" : "Nearest doctor or health centre"),
+    doctorDirection: data.doctorDirection ?? "",
+    disclaimer: data.disclaimer ||
+      "This AI-generated triage is informational only and must not replace an in-person consultation with a qualified healthcare professional.",
   };
 }
 
 // ─── Severity styles ────────────────────────────────────────────────────────────
 
 const SEV_CONFIG = {
-  emergency: { border: "border-red-500",    bg: "bg-red-50 dark:bg-red-950/30",     badge: "bg-red-100 text-red-800",      icon: AlertOctagon,  label: "🚨 EMERGENCY", color: "text-red-600"    },
+  emergency: { border: "border-red-500",    bg: "bg-red-50 dark:bg-red-950/30",       badge: "bg-red-100 text-red-800",      icon: AlertOctagon,  label: "🚨 EMERGENCY", color: "text-red-600"    },
   high:      { border: "border-orange-500", bg: "bg-orange-50 dark:bg-orange-950/30", badge: "bg-orange-100 text-orange-800", icon: AlertCircle,   label: "⚠️ URGENT",    color: "text-orange-600" },
   moderate:  { border: "border-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950/30", badge: "bg-yellow-100 text-yellow-800", icon: AlertTriangle, label: "⚠️ MODERATE",  color: "text-yellow-600" },
-  mild:      { border: "border-green-500",  bg: "bg-green-50 dark:bg-green-950/30",  badge: "bg-green-100 text-green-800",  icon: CheckCircle,   label: "✅ MILD",       color: "text-green-600"  },
-  info:      { border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30",    badge: "bg-blue-100 text-blue-800",    icon: Info,          label: "ℹ️ INFO",       color: "text-blue-600"   },
+  mild:      { border: "border-green-500",  bg: "bg-green-50 dark:bg-green-950/30",   badge: "bg-green-100 text-green-800",  icon: CheckCircle,   label: "✅ MILD",       color: "text-green-600"  },
+  info:      { border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30",     badge: "bg-blue-100 text-blue-800",    icon: Info,          label: "ℹ️ INFO",       color: "text-blue-600"   },
 } as const;
 
 // ─── Structured card ────────────────────────────────────────────────────────────
@@ -150,7 +160,35 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
         </div>
       )}
 
-      {/* Possible causes */}
+      {/* Doctor direction for high/emergency */}
+      {data.doctorDirection && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-300 dark:border-red-700 rounded-lg p-3 flex items-start gap-3">
+          <MapPin className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[11px] font-semibold text-red-700 dark:text-red-300 uppercase tracking-wide mb-1">
+              See a Doctor Now
+            </p>
+            <p className="text-xs text-foreground">{data.doctorDirection}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Possible conditions */}
+      {data.possibleConditions && data.possibleConditions.length > 0 && (
+        <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+          <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-1.5">
+            Possible Conditions
+          </p>
+          {data.possibleConditions.map((c, i) => (
+            <div key={i} className="flex items-start gap-2 mt-1">
+              <span className="text-purple-500 font-bold flex-shrink-0 mt-0.5">•</span>
+              <span className="text-xs text-foreground">{c}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Possible causes (offline cache) */}
       {data.possibleCauses.length > 0 && (
         <div className="bg-muted/60 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Possible Causes</p>
@@ -211,7 +249,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const SUGGESTIONS = [
+const SUGGESTIONS_EN = [
   "I have a headache and fever",
   "My chest feels tight",
   "Stomach pain since morning",
@@ -219,11 +257,20 @@ const SUGGESTIONS = [
   "Sore throat and cough",
 ];
 
+const SUGGESTIONS_HI = [
+  "मुझे सिरदर्द और बुखार है",
+  "छाती में जकड़न महसूस हो रही है",
+  "सुबह से पेट दर्द है",
+  "बहुत थकान हो रही है",
+  "गले में खराश और खांसी है",
+];
+
 const WELCOME_DATA: StructuredResponse = {
   problem: "Welcome to SehatBeat AI",
-  severity: "Your personal AI health companion — powered by Perplexity AI",
+  severity: "Your personal AI health companion — powered by Gemini AI",
   severityLevel: "info",
   possibleCauses: [],
+  possibleConditions: [],
   immediateSteps: [
     "Describe your symptoms in detail for accurate analysis",
     "Ask about any medicine, condition, or health concern",
@@ -231,6 +278,7 @@ const WELCOME_DATA: StructuredResponse = {
   ],
   whenToSeekHelp: [],
   specialist: "N/A",
+  doctorDirection: "",
   disclaimer: "I provide informational guidance only. Always consult a licensed doctor for diagnosis and treatment.",
 };
 
@@ -241,11 +289,8 @@ function savePendingQuery(query: string) {
     const existing = JSON.parse(localStorage.getItem(key) || "[]") as { query: string; timestamp: string }[];
     const next = [
       ...existing,
-      {
-        query,
-        timestamp: new Date().toISOString(),
-      },
-    ].slice(-50); // keep latest 50 only
+      { query, timestamp: new Date().toISOString() },
+    ].slice(-50);
     localStorage.setItem(key, JSON.stringify(next));
   } catch {
     // ignore storage errors in offline mode
@@ -254,7 +299,6 @@ function savePendingQuery(query: string) {
 
 function buildOfflineResponse(userInput: string): StructuredResponse | null {
   const text = userInput.toLowerCase();
-
   for (const entry of Object.values(OFFLINE_CACHE)) {
     const match = entry.keywords.some(k => text.includes(k.toLowerCase()));
     if (match) {
@@ -263,14 +307,15 @@ function buildOfflineResponse(userInput: string): StructuredResponse | null {
         severity: entry.severity,
         severityLevel: entry.severityLevel,
         possibleCauses: entry.possibleCauses ?? [],
+        possibleConditions: [],
         immediateSteps: entry.immediateSteps,
         whenToSeekHelp: entry.whenToSeekHelp,
         specialist: entry.specialist,
+        doctorDirection: "",
         disclaimer: entry.disclaimer,
       };
     }
   }
-
   return null;
 }
 
@@ -292,7 +337,7 @@ export const AIAssistant = () => {
   const { toast } = useToast();
   const { isOnline } = useNetwork();
   const wasOnlineRef = useRef<boolean>(isOnline);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
   useEffect(() => {
@@ -324,12 +369,8 @@ export const AIAssistant = () => {
         setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
       }
     };
-    r.onend = () => {
-      setIsListening(false);
-    };
-    r.onerror = () => {
-      setIsListening(false);
-    };
+    r.onend = () => { setIsListening(false); };
+    r.onerror = () => { setIsListening(false); };
     recognitionRef.current = r;
 
     return () => {
@@ -357,57 +398,35 @@ export const AIAssistant = () => {
       wasOnlineRef.current = isOnline;
       return;
     }
-
     wasOnlineRef.current = true;
-
     const key = "sehatbeat_pending_queries";
 
     const syncPending = async () => {
       if (typeof window === "undefined" || typeof localStorage === "undefined") return;
       let pending: { query: string; timestamp: string }[] = [];
       try {
-        pending = JSON.parse(localStorage.getItem(key) || "[]") as {
-          query: string;
-          timestamp: string;
-        }[];
+        pending = JSON.parse(localStorage.getItem(key) || "[]") as { query: string; timestamp: string }[];
       } catch {
         pending = [];
       }
-
       if (!pending.length) return;
-
-      // Clear the queue early to avoid duplicate sends on rapid reconnects
       localStorage.removeItem(key);
 
       for (const item of pending) {
         const q = item.query.trim();
         if (!q) continue;
-
         try {
           const structured = await callNextSymptomAPI(q, getStoredLanguage());
           const id = `${item.timestamp}-${Math.random().toString(36).slice(2)}`;
-
           setMessages(prev => [
             ...prev,
-            {
-              id,
-              type: "bot",
-              content: "",
-              timestamp: new Date(),
-              structuredData: structured,
-            },
+            { id, type: "bot", content: "", timestamp: new Date(), structuredData: structured },
           ]);
-
-          const topic =
-            q.length > 60
-              ? `${q.slice(0, 57).trimEnd()}...`
-              : q || "your earlier health question";
-
+          const topic = q.length > 60 ? `${q.slice(0, 57).trimEnd()}...` : q || "your earlier health question";
           sonnerToast("Your offline question has been answered!", {
             description: `Your offline question about "${topic}" has been analyzed by SehatBeat AI.`,
           });
-        } catch (err) {
-          // If sending fails, re-queue this query so it isn't lost
+        } catch {
           savePendingQuery(q);
         }
       }
@@ -424,32 +443,23 @@ export const AIAssistant = () => {
       const uid = Date.now().toString();
       const tid = (Date.now() + 1).toString();
 
-      // Always show the user message first
       setMessages(prev => [
         ...prev,
         { id: uid, type: "user", content: msg, timestamp: new Date() },
       ]);
       setInput("");
 
-      // If offline, try offline cache first; on miss, store-and-forward
+      // Offline path
       if (!isOnline) {
         const offlineData = buildOfflineResponse(msg);
-
         if (offlineData) {
           setMessages(prev => [
             ...prev,
-            {
-              id: tid,
-              type: "bot",
-              content: "",
-              timestamp: new Date(),
-              structuredData: offlineData,
-            },
+            { id: tid, type: "bot", content: "", timestamp: new Date(), structuredData: offlineData },
           ]);
           toast({
             title: "Offline mode",
-            description:
-              "You are offline. Showing saved first-aid guidance. For detailed AI analysis, reconnect to the internet.",
+            description: "You are offline. Showing saved first-aid guidance. For detailed AI analysis, reconnect to the internet.",
           });
         } else {
           savePendingQuery(msg);
@@ -458,30 +468,22 @@ export const AIAssistant = () => {
             {
               id: tid,
               type: "bot",
-              content:
-                "I don't have this saved offline. I have saved your question and will ask the AI as soon as your internet connects.",
+              content: "I don't have this saved offline. I have saved your question and will ask the AI as soon as your internet connects.",
               timestamp: new Date(),
             },
           ]);
           toast({
             title: "Saved for later",
-            description:
-              "This question will be sent to SehatBeat AI automatically when your internet returns.",
+            description: "This question will be sent to SehatBeat AI automatically when your internet returns.",
           });
         }
         return;
       }
 
-      // Online path: call Perplexity AI
+      // Online path
       setMessages(prev => [
         ...prev,
-        {
-          id: tid,
-          type: "bot",
-          content: "",
-          timestamp: new Date(),
-          isThinking: true,
-        },
+        { id: tid, type: "bot", content: "", timestamp: new Date(), isThinking: true },
       ]);
       setIsLoading(true);
 
@@ -490,12 +492,7 @@ export const AIAssistant = () => {
         setMessages(prev =>
           prev.map(m =>
             m.id === tid
-              ? {
-                  ...m,
-                  isThinking: false,
-                  content: "",
-                  structuredData: structured,
-                }
+              ? { ...m, isThinking: false, content: "", structuredData: structured }
               : m
           )
         );
@@ -514,9 +511,7 @@ export const AIAssistant = () => {
               ? {
                   ...m,
                   isThinking: false,
-                  content: `Unable to connect to AI.\n\n${
-                    err instanceof Error ? err.message : String(err)
-                  }`,
+                  content: `Unable to connect to AI.\n\n${err instanceof Error ? err.message : String(err)}`,
                 }
               : m
           )
@@ -524,13 +519,12 @@ export const AIAssistant = () => {
         setIsLoading(false);
         toast({
           title: "Connection Error",
-          description:
-            "Unable to reach the SehatBeat analysis service. Please try again or check your connection.",
+          description: "Unable to reach the SehatBeat analysis service. Please try again or check your connection.",
           variant: "destructive",
         });
       }
     },
-    [input, isLoading, isOnline, toast]
+    [input, isLoading, isOnline, language, toast]
   );
 
   // Listen for events dispatched by SehatBeatAI page (Analyze button)
@@ -561,6 +555,7 @@ export const AIAssistant = () => {
         d.immediateSteps.length ? `Immediate steps: ${d.immediateSteps.join("; ")}` : "",
         d.whenToSeekHelp.length ? `See a doctor if: ${d.whenToSeekHelp.join("; ")}` : "",
         d.specialist && d.specialist !== "N/A" ? `Recommended specialist: ${d.specialist}` : "",
+        d.doctorDirection || "",
         d.disclaimer,
       ].filter(Boolean);
       text = parts.join(". ");
@@ -599,6 +594,8 @@ export const AIAssistant = () => {
 
   // ── Chat panel ───────────────────────────────────────────────────────────────
 
+  const suggestions = language === "hi" ? SUGGESTIONS_HI : SUGGESTIONS_EN;
+
   return (
     <Card className={`fixed z-50 bg-background border shadow-2xl transition-all duration-300 flex flex-col overflow-hidden
       ${isMinimized
@@ -624,19 +621,15 @@ export const AIAssistant = () => {
               <p className="font-bold text-white text-sm leading-tight">SehatBeat AI</p>
               <div className="flex flex-col gap-0.5">
                 <p className="text-white/80 text-[11px] flex items-center gap-1">
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      isOnline ? "bg-emerald-300" : "bg-amber-200"
-                    }`}
-                  />
+                  <span className={`inline-block w-2 h-2 rounded-full ${isOnline ? "bg-emerald-300" : "bg-amber-200"}`} />
                   {isOnline ? "Online (AI Active)" : "Offline Mode (Basic First-Aid)"}
                 </p>
                 <p className="text-white/70 text-[11px] flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
                   {isOnline
                     ? isLoading
-                      ? "Analyzing with Perplexity..."
-                      : "Powered by Perplexity AI"
+                      ? "Analyzing with Gemini AI..."
+                      : "Powered by Gemini AI"
                     : "Using local, lightweight guidance"}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
@@ -644,13 +637,7 @@ export const AIAssistant = () => {
                     type="button"
                     onClick={() => {
                       setLanguage("en");
-                      if (typeof window !== "undefined") {
-                        try {
-                          window.localStorage?.setItem("sehatbeat_language", "en");
-                        } catch {
-                          // ignore
-                        }
-                      }
+                      try { window.localStorage?.setItem("sehatbeat_language", "en"); } catch { /* ignore */ }
                     }}
                     className={`px-2 py-0.5 rounded-full text-[10px] border ${
                       language === "en"
@@ -664,13 +651,7 @@ export const AIAssistant = () => {
                     type="button"
                     onClick={() => {
                       setLanguage("hi");
-                      if (typeof window !== "undefined") {
-                        try {
-                          window.localStorage?.setItem("sehatbeat_language", "hi");
-                        } catch {
-                          // ignore
-                        }
-                      }
+                      try { window.localStorage?.setItem("sehatbeat_language", "hi"); } catch { /* ignore */ }
                     }}
                     className={`px-2 py-0.5 rounded-full text-[10px] border ${
                       language === "hi"
@@ -701,20 +682,20 @@ export const AIAssistant = () => {
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
             {messages.map(msg => (
               <div key={msg.id} className={`flex items-start gap-2.5 ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                {/* Avatar */}
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${msg.type === "bot" ? "bg-gradient-to-br from-blue-500 to-teal-500" : "bg-secondary"}`}>
                   {msg.type === "bot" ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-secondary-foreground" />}
                 </div>
-                {/* Bubble */}
                 <div className={`max-w-[84%] rounded-2xl px-3 py-2.5 ${msg.type === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
                   {msg.isThinking ? (
                     <div className="flex items-center gap-2 py-1">
                       <div className="flex gap-1">
-                        {[0,1,2].map(i => (
-                          <span key={i} className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />
+                        {[0, 1, 2].map(i => (
+                          <span key={i} className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                         ))}
                       </div>
-                      <span className="text-xs text-muted-foreground">Analyzing with AI...</span>
+                      <span className="text-xs text-muted-foreground">
+                        {language === "hi" ? "AI विश्लेषण कर रहा है..." : "Analyzing with AI..."}
+                      </span>
                     </div>
                   ) : msg.structuredData ? (
                     <StructuredCard data={msg.structuredData} />
@@ -735,9 +716,12 @@ export const AIAssistant = () => {
           {/* Suggestion chips */}
           {messages.filter(m => m.type === "user").length === 0 && (
             <div className="px-3 pb-2 flex gap-2 overflow-x-auto flex-shrink-0" style={{ scrollbarWidth: "none" }}>
-              {SUGGESTIONS.map(s => (
-                <button key={s} onClick={() => sendMessage(s)}
-                  className="text-xs whitespace-nowrap bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-full px-3 py-1.5 transition-colors flex-shrink-0">
+              {suggestions.map(s => (
+                <button
+                  key={s}
+                  onClick={() => sendMessage(s)}
+                  className="text-xs whitespace-nowrap bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-full px-3 py-1.5 transition-colors flex-shrink-0"
+                >
                   {s}
                 </button>
               ))}
@@ -751,15 +735,15 @@ export const AIAssistant = () => {
                 type="button"
                 variant="outline"
                 size="sm"
-                className={`w-9 h-9 rounded-full p-0 flex-shrink-0 ${
-                  isListening ? "bg-red-500 text-white hover:bg-red-600" : ""
-                }`}
+                className={`w-9 h-9 rounded-full p-0 flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600 border-red-500" : ""}`}
                 onClick={() => {
                   const rec = recognitionRef.current;
                   if (!rec) {
                     toast({
-                      title: "Voice not supported",
-                      description: "Your browser does not support speech recognition.",
+                      title: language === "hi" ? "वॉइस समर्थित नहीं" : "Voice not supported",
+                      description: language === "hi"
+                        ? "आपका ब्राउज़र स्पीच रिकग्निशन को सपोर्ट नहीं करता।"
+                        : "Your browser does not support speech recognition.",
                     });
                     return;
                   }
@@ -789,7 +773,11 @@ export const AIAssistant = () => {
                     sendMessage();
                   }
                 }}
-                placeholder="Describe your symptoms..."
+                placeholder={
+                  isListening
+                    ? language === "hi" ? "सुन रहा है..." : "Listening..."
+                    : language === "hi" ? "अपने लक्षण बताएं..." : "Describe your symptoms..."
+                }
                 disabled={isLoading}
                 className="flex-1 text-sm rounded-full h-9 px-4"
               />
@@ -802,8 +790,16 @@ export const AIAssistant = () => {
                 {isLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
+            {isListening && (
+              <p className="text-[11px] text-red-500 mt-1.5 text-center animate-pulse">
+                🎤 {language === "hi" ? "बोलिए..." : "Speak now..."}
+              </p>
+            )}
             <p className="text-center text-[11px] text-muted-foreground mt-2 flex items-center justify-center gap-1">
-              <MessageCircle className="w-3 h-3" /> Not a substitute for professional medical advice
+              <MessageCircle className="w-3 h-3" />
+              {language === "hi"
+                ? "यह पेशेवर चिकित्सा सलाह का विकल्प नहीं है"
+                : "Not a substitute for professional medical advice"}
             </p>
           </div>
         </>
