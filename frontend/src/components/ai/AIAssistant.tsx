@@ -83,7 +83,8 @@ function getStoredLanguage(): AppLanguage {
 
 async function callNextSymptomAPI(
   message: string,
-  language: AppLanguage = "en"
+  language: AppLanguage = "en",
+  history: { role: string; content: string }[] = []
 ): Promise<StructuredResponse> {
   // VITE_BACKEND_URL=http://localhost:3000 in frontend/.env
   const backendBase =
@@ -96,48 +97,61 @@ async function callNextSymptomAPI(
     ? `${backendBase}/api/analyze-symptoms`
     : "/api/analyze-symptoms";
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ symptoms: message, language }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`API ${res.status}: ${txt.slice(0, 200)}`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symptoms: message, language, history }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `API ${res.status}: ${await res.text()}`);
+    }
+
+    const data: {
+      analysis?: string;
+      severity?: string;
+      severityLevel?: string;
+      possibleConditions?: string[];
+      recommendations?: string[];
+      immediateSteps?: string[];
+      whenToSeekHelp?: string[];
+      specialist?: string;
+      doctorDirection?: string;
+      doctorNote?: string;
+      disclaimer?: string;
+      // also accept top-level structured fields from Gemini response
+      problem?: string;
+      possibleCauses?: string[];
+    } = await res.json();
+
+    return {
+      problem: data.problem || (language === "hi" ? "लक्षण विश्लेषण" : "Symptom Analysis"),
+      severity: data.severity || "Overall severity could not be determined precisely.",
+      severityLevel: mapSeverityLevel(data.severityLevel || data.severity),
+      possibleCauses: data.possibleCauses ?? [],
+      possibleConditions: data.possibleConditions ?? [],
+      immediateSteps: data.immediateSteps ?? data.recommendations ?? [],
+      whenToSeekHelp: data.whenToSeekHelp ?? [],
+      specialist: data.specialist || (language === "hi" ? "सामान्य चिकित्सक" : "Nearest doctor or health centre"),
+      doctorDirection: data.doctorDirection ?? data.doctorNote ?? "",
+      disclaimer:
+        data.disclaimer ||
+        "This AI-generated triage is informational only and must not replace an in-person consultation with a qualified healthcare professional.",
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. The AI service is taking too long. Please try again.');
+    }
+    throw error;
   }
-
-  const data: {
-    analysis?: string;
-    severity?: string;
-    severityLevel?: string;
-    possibleConditions?: string[];
-    recommendations?: string[];
-    immediateSteps?: string[];
-    whenToSeekHelp?: string[];
-    specialist?: string;
-    doctorDirection?: string;
-    doctorNote?: string;
-    disclaimer?: string;
-    // also accept top-level structured fields from Gemini response
-    problem?: string;
-    possibleCauses?: string[];
-  } = await res.json();
-
-  return {
-    problem: data.problem || (language === "hi" ? "लक्षण विश्लेषण" : "Symptom Analysis"),
-    severity: data.severity || "Overall severity could not be determined precisely.",
-    severityLevel: mapSeverityLevel(data.severityLevel || data.severity),
-    possibleCauses: data.possibleCauses ?? [],
-    possibleConditions: data.possibleConditions ?? [],
-    immediateSteps: data.immediateSteps ?? data.recommendations ?? [],
-    whenToSeekHelp: data.whenToSeekHelp ?? [],
-    specialist: data.specialist || (language === "hi" ? "सामान्य चिकित्सक" : "Nearest doctor or health centre"),
-    doctorDirection: data.doctorDirection ?? data.doctorNote ?? "",
-    disclaimer:
-      data.disclaimer ||
-      "This AI-generated triage is informational only and must not replace an in-person consultation with a qualified healthcare professional.",
-  };
 }
 
 // ─── Severity styles ────────────────────────────────────────────────────────────
@@ -519,6 +533,13 @@ export const AIAssistant = () => {
       }
 
       // Online path
+      const conversationHistory = messages
+        .filter(m => m.id !== "welcome" && m.type !== "bot" ? true : !!m.content)
+        .map(msg => ({
+          role: msg.type === "user" ? "user" : "assistant",
+          content: msg.content || (msg.structuredData ? JSON.stringify(msg.structuredData) : ""),
+        }));
+
       setMessages(prev => [
         ...prev,
         { id: tid, type: "bot", content: "", timestamp: new Date(), isThinking: true },
@@ -526,7 +547,7 @@ export const AIAssistant = () => {
       setIsLoading(true);
 
       try {
-        const structured = await callNextSymptomAPI(msg, language);
+        const structured = await callNextSymptomAPI(msg, language, conversationHistory);
         setMessages(prev =>
           prev.map(m =>
             m.id === tid
@@ -534,7 +555,6 @@ export const AIAssistant = () => {
               : m
           )
         );
-        setIsLoading(false);
         if (structured.severityLevel === "emergency") {
           toast({
             title: t("emergency_detected"),
@@ -554,15 +574,16 @@ export const AIAssistant = () => {
               : m
           )
         );
-        setIsLoading(false);
         toast({
           title: t("connection_error"),
           description: t("connection_error_desc"),
           variant: "destructive",
         });
+      } finally {
+        setIsLoading(false);
       }
     },
-    [input, isLoading, isOnline, language, toast]
+    [input, isLoading, isOnline, language, toast, messages]
   );
 
   // Listen for events dispatched by SehatBeatAI page (Analyze button)
@@ -619,11 +640,12 @@ export const AIAssistant = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        aria-label={t("open_ai")}
-        className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 lg:bottom-8 lg:right-8 flex items-center justify-center"
+        aria-label={t("ai.openAI")}
+        className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 lg:bottom-8 lg:right-8 flex items-center justify-center p-0 overflow-hidden border-2 border-white"
       >
-        <div className="relative">
-          <Bot className="w-7 h-7" />
+        <div className="relative w-full h-full flex items-center justify-center">
+          <img src="/doctor-avatar.png" alt="SehatBeat Doctor" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+          <Bot className="w-7 h-7 hidden" />
           <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white animate-pulse" />
         </div>
       </button>
@@ -645,8 +667,9 @@ export const AIAssistant = () => {
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-teal-500 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center overflow-hidden border border-white/40">
+              <img src="/doctor-avatar.png" alt="Doctor" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+              <Bot className="w-5 h-5 text-white hidden" />
             </div>
             <span
               className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-teal-500 ${
@@ -656,19 +679,19 @@ export const AIAssistant = () => {
           </div>
           {!isMinimized && (
             <div>
-              <p className="font-bold text-white text-sm leading-tight">{t("ai_title")}</p>
+              <p className="font-bold text-white text-sm leading-tight">{t("ai.title")}</p>
               <div className="flex flex-col gap-0.5">
                 <p className="text-white/80 text-[11px] flex items-center gap-1">
                   <span className={`inline-block w-2 h-2 rounded-full ${isOnline ? "bg-emerald-300" : "bg-amber-200"}`} />
-                  {isOnline ? t("ai_online") : t("ai_offline")}
+                  {isOnline ? t("ai.online") : t("ai.offline")}
                 </p>
                 <p className="text-white/70 text-[11px] flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
                   {isOnline
                     ? isLoading
-                      ? t("ai_analyzing")
-                      : t("ai_powered_by")
-                    : t("ai_local_guidance")}
+                      ? t("ai.analyzing")
+                      : t("ai.poweredBy")
+                    : t("ai.offlineDesc")}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <button
@@ -721,7 +744,14 @@ export const AIAssistant = () => {
             {messages.map(msg => (
               <div key={msg.id} className={`flex items-start gap-2.5 ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${msg.type === "bot" ? "bg-gradient-to-br from-blue-500 to-teal-500" : "bg-secondary"}`}>
-                  {msg.type === "bot" ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-secondary-foreground" />}
+                  {msg.type === "bot" ? (
+                    <div className="w-7 h-7 rounded-full overflow-hidden border border-white/40 shadow-sm bg-white flex items-center justify-center">
+                      <img src="/doctor-avatar.png" alt="Doctor" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                      <Bot className="w-4 h-4 text-blue-500 hidden" />
+                    </div>
+                  ) : (
+                    <User className="w-4 h-4 text-secondary-foreground" />
+                  )}
                 </div>
                 <div className={`max-w-[84%] rounded-2xl px-3 py-2.5 ${msg.type === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
                   {msg.isThinking ? (
@@ -732,7 +762,7 @@ export const AIAssistant = () => {
                         ))}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {t("ai_analyzing_short")}
+                        {t("ai.analyzing")}
                       </span>
                     </div>
                   ) : msg.structuredData ? (
@@ -778,8 +808,8 @@ export const AIAssistant = () => {
                   const rec = recognitionRef.current;
                   if (!rec) {
                     toast({
-                      title: t("voice_not_supported"),
-                      description: t("voice_not_supported_desc"),
+                      title: t("ai.voiceNotSupported"),
+                      description: t("ai.voiceNotSupportedDesc"),
                     });
                     return;
                   }
@@ -811,8 +841,8 @@ export const AIAssistant = () => {
                 }}
                 placeholder={
                   isListening
-                    ? language === "hi" ? "सुन रहा है..." : "Listening..."
-                    : language === "hi" ? "अपने लक्षण बताएं..." : "Describe your symptoms..."
+                    ? t("ai.listening")
+                    : t("ai.placeholder")
                 }
                 disabled={isLoading}
                 className="flex-1 text-sm rounded-full h-9 px-4"
@@ -828,14 +858,12 @@ export const AIAssistant = () => {
             </div>
             {isListening && (
               <p className="text-[11px] text-red-500 mt-1.5 text-center animate-pulse">
-                🎤 {language === "hi" ? "बोलिए..." : "Speak now..."}
+                🎤 {t("ai.listening")}
               </p>
             )}
             <p className="text-center text-[11px] text-muted-foreground mt-2 flex items-center justify-center gap-1">
               <MessageCircle className="w-3 h-3" />
-              {language === "hi"
-                ? "यह पेशेवर चिकित्सा सलाह का विकल्प नहीं है"
-                : "Not a substitute for professional medical advice"}
+              {t("ai.disclaimer")}
             </p>
           </div>
         </>

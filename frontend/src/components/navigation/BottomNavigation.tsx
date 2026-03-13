@@ -9,20 +9,25 @@ import {
 } from "lucide-react";
 import { useCart } from "@/hooks/useConvex";
 import { useAuth } from "@clerk/clerk-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const bottomNavItems = [
-  { name: "Home", path: "/", icon: Home },
-  { name: "Medicine", path: "/medicine", icon: ShoppingCart },
+const getBottomNavItems = (t: (key: string) => string) => [
+  { name: t("nav.home"), path: "/", icon: Home },
+  { name: t("nav.medicine"), path: "/medicine", icon: ShoppingCart },
+  // Keeping "Cart" hardcoded if needed, or we can use medicine context? Let's just use "Cart" or add it.
   { name: "Cart", path: "/cart", icon: ShoppingCart, isCart: true },
-  { name: "Reminders", path: "/reminders", icon: Bell },
-  { name: "SehatBeat AI", path: "/sehatbeat-ai", icon: Activity },
-  { name: "Clinical", path: "/clinical-docs", icon: FileText, highlighted: true },
+  { name: t("nav.reminders"), path: "/reminders", icon: Bell },
+  { name: t("nav.sehatbeatAI"), path: "/sehatbeat-ai", icon: Activity },
+  { name: t("nav.doctors"), path: "/doctors", icon: FileText, highlighted: true },
 ];
 
 export const BottomNavigation = () => {
   const location = useLocation();
   const { isSignedIn } = useAuth();
   const { cartItems } = useCart();
+  const { t } = useLanguage();
+  const bottomNavItems = getBottomNavItems(t);
+  
   const isActive = (path: string) => location.pathname === path;
   
   const getCartItemCount = () => {

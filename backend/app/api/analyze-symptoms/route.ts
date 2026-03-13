@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { symptoms, language } = await req.json();
+  const { symptoms, language, history } = await req.json();
   const isHindi = language === "hi";
+  
+  const pastHistory = (history || []).slice(-10);
 
   // ── Fallbacks ────────────────────────────────────────────────────────────────
   const fallback = {
@@ -125,22 +127,24 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
         }
       );
 
-      if (geminiRes.ok) {
-        const geminiData = await geminiRes.json();
-        const raw: string =
-          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      if (!geminiRes.ok) {
+        throw new Error(`Gemini Error ${geminiRes.status}: ${await geminiRes.text()}`);
+      }
+      const geminiData = await geminiRes.json();
+      const raw: string =
+        geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
-        if (raw) {
-          try {
-            const parsed = parseAIResponse(raw);
-            return NextResponse.json(parsed);
-          } catch {
-            // JSON parse failed — fall through to Perplexity
-          }
+      if (raw) {
+        try {
+          const parsed = parseAIResponse(raw);
+          return NextResponse.json(parsed);
+        } catch {
+          // JSON parse failed — fall through to Perplexity
         }
       }
-    } catch {
-      // Gemini network error — fall through to Perplexity
+    } catch (error) {
+      console.error('[Gemini] API call failed:', error);
+      // Gemini failed — fall through to Perplexity
     }
   }
 
@@ -159,36 +163,48 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
           model: "llama-3.1-sonar-small-128k-online",
           messages: [
             { role: "system", content: systemPrompt },
+            ...pastHistory,
             { role: "user", content: symptoms },
           ],
           max_tokens: 1024,
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const raw: string = data.choices?.[0]?.message?.content ?? "";
+      if (!response.ok) {
+        throw new Error(`Perplexity Error ${response.status}: ${await response.text()}`);
+      }
+      const data = await response.json();
+      const raw: string = data.choices?.[0]?.message?.content ?? "";
 
-        if (raw) {
-          try {
-            const parsed = parseAIResponse(raw);
-            return NextResponse.json(parsed);
-          } catch {
-            // Not valid JSON — wrap plain text response
-            return NextResponse.json({
-              ...fallback,
-              problem: isHindi ? "लक्षण विश्लेषण" : "Symptom Analysis",
-              severity: raw,
-              severityLevel: "info",
-            });
-          }
+      if (raw) {
+        try {
+          const parsed = parseAIResponse(raw);
+          return NextResponse.json(parsed);
+        } catch {
+          // Not valid JSON — wrap plain text response
+          return NextResponse.json({
+            ...fallback,
+            problem: isHindi ? "लक्षण विश्लेषण" : "Symptom Analysis",
+            severity: raw,
+            severityLevel: "info",
+          });
         }
       }
-    } catch {
-      // Perplexity also failed
+    } catch (error) {
+      console.error('[Perplexity] API call failed:', error);
+      return NextResponse.json(
+        { 
+          error: 'AI service failed', 
+          detail: error instanceof Error ? error.message : String(error) 
+        },
+        { status: 500 }
+      );
     }
   }
 
   // ── Static fallback ──────────────────────────────────────────────────────────
-  return NextResponse.json(fallback);
+  return NextResponse.json(
+    { error: 'All AI services unavailable. Check API keys and server logs.' },
+    { status: 503 }
+  );
 }

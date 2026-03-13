@@ -5,15 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Activity, MessageCircle, PlayCircle, Shield, Users, Zap } from "lucide-react";
 import heroImage from "@/assets/medical.jpg";
 import AIChatbot from "@/components/AIChatbot";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const SUGGESTED_PROMPTS = [
-  "What could cause a persistent headache?",
-  "Remind me to take my medicine every day.",
-  "Check symptoms for fever and fatigue.",
-  "How to manage diabetes daily?"
+const getSuggestedPrompts = (t: (key: string) => string) => [
+  t("home.aiCardPrompt1"),
+  t("home.aiCardPrompt2"),
+  t("home.aiCardPrompt3"),
+  t("home.aiCardPrompt4")
 ];
 
 export const HeroSection = () => {
+  const { t } = useLanguage();
   const [chatQuestion, setChatQuestion] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isDemoOpen, setIsDemoOpen] = useState(false);
@@ -85,20 +87,19 @@ export const HeroSection = () => {
           {/* Badge */}
           <Badge className="bg-gradient-accent text-accent-foreground px-4 py-2 text-sm animate-float" variant="secondary">
             <Activity className="w-4 h-4 mr-2" />
-            Smart Medical Platform
+            {t("home.badge")}
           </Badge>
 
           {/* Main Heading */}
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              Your Health,
+              {t("home.hero").split(',')[0]},
               <span className="block text-transparent bg-clip-text bg-gradient-hero">
-                Simplified
+                {t("home.hero").split(',')[1]?.trim() || "Simplified"}
               </span>
             </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            SehatBeat - Comprehensive healthcare management with smart reminders, symptom checking, 
-            medicine ordering, and clinical documentation in one secure platform.
+            {t("home.heroSub")}
           </p>
           </div>
 
@@ -113,10 +114,10 @@ export const HeroSection = () => {
                   </div>
                   <div>
                     <h2 className="text-base md:text-lg font-semibold text-foreground">
-                      SehatBeat AI Assistant
+                      {t("ai.title")}
                     </h2>
                     <p className="mt-1 text-sm md:text-base text-muted-foreground">
-                      Ask anything about symptoms, medicines, or health reminders — get instant, AI-powered guidance.
+                      {t("home.aiCardSubtitle")}
                     </p>
                   </div>
                 </div>
@@ -130,8 +131,8 @@ export const HeroSection = () => {
                   <div className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 sm:px-4 sm:py-3 shadow-sm flex items-center gap-3">
                     <Input
                       type="text"
-                      aria-label="Ask SehatBeat AI about symptoms, medicines, or health reminders"
-                      placeholder="Ask about symptoms, medicines, or health reminders..."
+                      aria-label={t("home.aiCardPlaceholder")}
+                      placeholder={t("home.aiCardPlaceholder")}
                       value={chatQuestion}
                       onChange={(e) => setChatQuestion(e.target.value)}
                       className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
@@ -142,7 +143,7 @@ export const HeroSection = () => {
                       size="lg"
                       className="hidden sm:inline-flex h-11 px-5 rounded-xl bg-gradient-primary text-primary-foreground shadow-strong hover:shadow-medium transition-all duration-300 hover:scale-[1.02] whitespace-nowrap"
                     >
-                      Ask AI →
+                      {t("home.getStarted")} →
                     </Button>
                     {/* Mobile icon-only button */}
                     <Button
@@ -159,10 +160,10 @@ export const HeroSection = () => {
                 {/* Suggested Prompts */}
                 <div className="space-y-2">
                   <p className="text-xs md:text-sm text-muted-foreground">
-                    Try asking:
+                    {t("home.aiCardTryAsking")}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {SUGGESTED_PROMPTS.map((prompt) => (
+                    {getSuggestedPrompts(t).map((prompt) => (
                       <button
                         key={prompt}
                         type="button"
@@ -185,7 +186,7 @@ export const HeroSection = () => {
                     onClick={() => setIsDemoOpen(true)}
                   >
                     <PlayCircle className="w-5 h-5" />
-                    See How It Works
+                    {t("home.watchDemo")}
                   </Button>
                 </div>
               </div>
@@ -196,15 +197,15 @@ export const HeroSection = () => {
           <div className="flex flex-wrap gap-6 justify-center items-center pt-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="w-4 h-4 text-secondary" />
-              <span>HIPAA Compliant</span>
+              <span>{t("home.statsCompliant")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="w-4 h-4 text-secondary" />
-              <span>10,000+ Patients</span>
+              <span>{t("home.statsPatients")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Zap className="w-4 h-4 text-secondary" />
-              <span>99.9% Uptime</span>
+              <span>{t("home.statsUptime")}</span>
             </div>
           </div>
         </div>

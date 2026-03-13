@@ -11,7 +11,7 @@ import { UserProfileProvider } from "@/components/UserProfileProvider";
 import { TopNavigation } from "@/components/navigation/TopNavigation";
 import { BottomNavigation } from "@/components/navigation/BottomNavigation";
 import { AIAssistant } from "@/components/ai/AIAssistant";
-import Onboarding from "@/components/Onboarding";
+import LanguageLanding from "@/components/LanguageLanding";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Index from "@/pages/index";
 import ClinicalDocs from "./pages/ClinicalDocs";
@@ -48,10 +48,6 @@ const AppContent = () => {
 
   const isOffline =
     typeof navigator !== "undefined" && navigator && !navigator.onLine;
-
-  if (!language) {
-    return <Onboarding />;
-  }
 
   // Offline mode: bypass Clerk entirely and show a stripped-down, read-only shell
   if (isOffline) {
@@ -172,6 +168,7 @@ const AppContent = () => {
 const App = () => {
   return (
     <LanguageProvider>
+      <LanguageLanding />
       <AppContent />
     </LanguageProvider>
   );

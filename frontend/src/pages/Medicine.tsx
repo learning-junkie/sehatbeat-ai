@@ -22,10 +22,12 @@ import { useMedicines, useCart } from "@/hooks/useConvex";
 import { useAuth } from "@clerk/clerk-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNetwork } from "@/hooks/useNetwork";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const categories = ['All', 'Pain Relief', 'Vitamins', 'Digestive Health', 'Antibiotics', 'Allergy'];
 
 const Medicine = () => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -238,10 +240,10 @@ const Medicine = () => {
               <div className="p-3 bg-gradient-primary rounded-xl shadow-medium">
                 <ShoppingCart className="w-8 h-8 text-primary-foreground" />
               </div>
-              <h1 className="text-4xl font-bold text-foreground">Medicine Ordering</h1>
+              <h1 className="text-4xl font-bold text-foreground">{t("medicine.title")}</h1>
             </div>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Order medicines online with fast delivery and verified quality
+              {t("medicine.subtitle")}
             </p>
           </div>
 
@@ -411,10 +413,10 @@ const Medicine = () => {
             <div className="p-3 bg-gradient-primary rounded-xl shadow-medium">
               <ShoppingCart className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-4xl font-bold text-foreground">Medicine Ordering</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t("medicine.title")}</h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Order medicines online with fast delivery and verified quality
+            {t("medicine.subtitle")}
           </p>
         </div>
 
