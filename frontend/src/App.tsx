@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ClerkProvider } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
+import { hiIN, enUS } from "@clerk/localizations";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import { TopNavigation } from "@/components/navigation/TopNavigation";
 import { BottomNavigation } from "@/components/navigation/BottomNavigation";
 import { AIAssistant } from "@/components/ai/AIAssistant";
 import Onboarding from "@/components/Onboarding";
+import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Index from "@/pages/index";
 import ClinicalDocs from "./pages/ClinicalDocs";
 import Symptomate from "./pages/Symptomate";
@@ -32,14 +34,11 @@ if (!PUBLISHABLE_KEY || PUBLISHABLE_KEY === 'pk_test_demo_key_for_development') 
   console.warn("VITE_CLERK_PUBLISHABLE_KEY is not set. Using demo mode for development.");
 }
 
-const App = () => {
-  const [showOnboarding, setShowOnboarding] = useState(false);
+const AppContent = () => {
+  const { language } = useLanguage();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedLang = window.localStorage.getItem("sehatbeat_lang");
-    setShowOnboarding(!storedLang);
     setIsReady(true);
   }, []);
 
@@ -50,14 +49,8 @@ const App = () => {
   const isOffline =
     typeof navigator !== "undefined" && navigator && !navigator.onLine;
 
-  if (showOnboarding) {
-    return (
-      <Onboarding
-        onComplete={() => {
-          setShowOnboarding(false);
-        }}
-      />
-    );
+  if (!language) {
+    return <Onboarding />;
   }
 
   // Offline mode: bypass Clerk entirely and show a stripped-down, read-only shell
@@ -92,9 +85,9 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="min-h-screen w-full bg-background">
+            <div className="min-h-screen w-full bg-background flex flex-col">
               <TopNavigation />
-              <main className="w-full">
+              <main className="w-full flex-1">
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/clinical-docs" element={<ClinicalDocs />} />
@@ -121,7 +114,10 @@ const App = () => {
 
   // Render with Clerk authentication and Convex
   return (
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ClerkProvider 
+      publishableKey={PUBLISHABLE_KEY} 
+      localization={language === 'hi' ? hiIN : enUS}
+    >
       <ConvexProviderWrapper>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
@@ -129,26 +125,40 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <UserProfileProvider>
-                <div className="min-h-screen w-full bg-background">
-                  <TopNavigation />
-                  <main className="w-full">
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/clinical-docs" element={<ClinicalDocs />} />
-                      <Route path="/sehatbeat-ai" element={<Symptomate />} />
-                      <Route path="/medicine" element={<Medicine />} />
-                      <Route path="/cart" element={<Cart />} />
-                      <Route path="/reminders" element={<Reminders />} />
-                      <Route path="/lab-tests" element={<LabTests />} />
-                      <Route path="/doctors" element={<Doctors />} />
-                      {/* Legacy route redirect */}
-                      <Route path="/symptomate" element={<Symptomate />} />
-                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
+                <div className="min-h-screen w-full bg-background flex flex-col">
+                  {/* Only show navigation if authenticated */}
+                  <SignedIn>
+                    <TopNavigation />
+                  </SignedIn>
+                  
+                  <main className="w-full flex-1 flex flex-col">
+                    <SignedOut>
+                      <div className="flex-1 flex flex-col min-h-[80vh] items-center justify-center p-4 w-full">
+                        <SignIn routing="hash" />
+                      </div>
+                    </SignedOut>
+                    <SignedIn>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/clinical-docs" element={<ClinicalDocs />} />
+                        <Route path="/sehatbeat-ai" element={<Symptomate />} />
+                        <Route path="/medicine" element={<Medicine />} />
+                        <Route path="/cart" element={<Cart />} />
+                        <Route path="/reminders" element={<Reminders />} />
+                        <Route path="/lab-tests" element={<LabTests />} />
+                        <Route path="/doctors" element={<Doctors />} />
+                        {/* Legacy route redirect */}
+                        <Route path="/symptomate" element={<Symptomate />} />
+                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </SignedIn>
                   </main>
-                  <BottomNavigation />
-                  <AIAssistant />
+                  
+                  <SignedIn>
+                    <BottomNavigation />
+                    <AIAssistant />
+                  </SignedIn>
                 </div>
               </UserProfileProvider>
             </BrowserRouter>
@@ -156,6 +166,14 @@ const App = () => {
         </QueryClientProvider>
       </ConvexProviderWrapper>
     </ClerkProvider>
+  );
+};
+
+const App = () => {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 };
 

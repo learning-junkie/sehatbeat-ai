@@ -1,206 +1,129 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Volume2, AlertTriangle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-// TODO: wire this to the real doctor avatar asset once available
-const DOCTOR_AVATAR_SRC = "/doctor-avatar.png";
+const DOCTOR_AVATAR_SRC = "/doctor-avatar.png"; // We can reuse this or simple icon
 
-interface OnboardingProps {
-  onComplete?: (lang: "en" | "hi") => void;
-}
+export default function Onboarding() {
+  const { setLanguage } = useLanguage();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const audioStartedRef = useRef(false);
 
-export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<"en" | "hi" | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [shouldShake, setShouldShake] = useState(false);
-
-  const queueRef = useRef<string[]>([]);
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  const cancelSpeech = () => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
+  const stopAudio = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
+      setIsPlaying(false);
     }
-    queueRef.current = [];
-    currentUtteranceRef.current = null;
-    setIsSpeaking(false);
   };
 
-  const playNextInQueue = (lang: "en" | "hi") => {
-    if (!queueRef.current.length) {
-      setIsSpeaking(false);
-      return;
-    }
-
-    const nextText = queueRef.current.shift();
-    if (!nextText) {
-      setIsSpeaking(false);
-      return;
-    }
-
-    if (typeof window === "undefined" || !window.speechSynthesis) {
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(nextText);
-    utterance.lang = lang === "hi" ? "hi-IN" : "en-IN";
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => {
-      playNextInQueue(lang);
+  const playAudio = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    
+    stopAudio(); // Clear any existing speech
+    setIsPlaying(true);
+    
+    const enUtterance = new SpeechSynthesisUtterance("Welcome to SehatBeat. Choose your language.");
+    enUtterance.lang = "en-IN";
+    
+    const hiUtterance = new SpeechSynthesisUtterance("SehatBeat mein aapka swagat hai. Apna bhasha chune.");
+    hiUtterance.lang = "hi-IN";
+    
+    hiUtterance.onend = () => {
+      setIsPlaying(false);
     };
-    utterance.onerror = () => {
-      playNextInQueue(lang);
+    
+    hiUtterance.onerror = () => {
+      setIsPlaying(false);
     };
-
-    currentUtteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const speakSequence = (lines: string[], lang: "en" | "hi") => {
-    cancelSpeech();
-    if (!lines.length) return;
-    queueRef.current = [...lines];
-    playNextInQueue(lang);
-  };
-
-  const handleEmergency = () => {
-    // Emergency interrupt: immediately stop audio and reset choice
-    cancelSpeech();
-    setSelectedLanguage(null);
-    // Draw attention to language buttons via a quick shake.
-    setShouldShake(true);
-    window.setTimeout(() => setShouldShake(false), 300);
-  };
-
-  const handleSelectLanguage = (lang: "en" | "hi") => {
-    // Extra safety: kill any pending speech before handoff.
-    cancelSpeech();
-    setSelectedLanguage(lang);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("sehatbeat_lang", lang);
-    }
-
-    if (onComplete) {
-      onComplete(lang);
-    }
+    
+    window.speechSynthesis.speak(enUtterance);
+    window.speechSynthesis.speak(hiUtterance);
   };
 
   useEffect(() => {
-    if (!hasStarted || !selectedLanguage) return;
+    if (hasInteracted && !audioStartedRef.current) {
+      audioStartedRef.current = true;
+      playAudio();
+    }
+  }, [hasInteracted]);
 
-    const englishIntro = [
-      "Welcome to SehatBeat.",
-      "I am your AI health assistant.",
-      "You can talk to me about symptoms, medicines, and daily reminders."
-    ];
+  const handleLanguageSelect = (lang: "en" | "hi") => {
+    stopAudio();
+    setLanguage(lang);
+  };
 
-    const hindiIntro = [
-      "सेहतबीट में आपका स्वागत है।",
-      "मैं आपका एआई हेल्थ असिस्टेंट हूँ।",
-      "आप मुझसे लक्षणों, दवाइयों और रोज़मर्रा के रिमाइंडर्स के बारे में बात कर सकते हैं।"
-    ];
-
-    const lines = selectedLanguage === "hi" ? hindiIntro : englishIntro;
-    speakSequence(lines, selectedLanguage);
-  }, [hasStarted, selectedLanguage]);
-
-  const speakingGlowClass = isSpeaking
-    ? "shadow-[0_0_60px_rgba(59,130,246,0.5)] ring-4 ring-blue-400/60 animate-pulse"
-    : "shadow-lg ring-2 ring-blue-200/40";
+  const handleInteraction = () => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-gradient-to-br from-sky-50 via-blue-50 to-emerald-50">
-      {/* Top bar with emergency interrupt */}
-      <header className="flex items-center justify-end px-6 py-4">
-        <Button
-          type="button"
-          variant="destructive"
-          className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-md shadow-red-500/30"
-          onClick={handleEmergency}
+    <div 
+      className="fixed inset-0 z-[100] flex flex-col bg-slate-900 overflow-hidden"
+      onClick={handleInteraction}
+      onTouchStart={handleInteraction}
+    >
+      {/* Skip Audio Button */}
+      <div className="absolute top-4 right-4 z-[110]">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            stopAudio();
+          }}
+          className="bg-slate-800/80 hover:bg-slate-700 text-white px-5 py-3 rounded-full border border-slate-600 font-bold text-lg shadow-lg active:scale-95 transition-all"
         >
-          <AlertTriangle className="w-4 h-4" />
-          <span>Skip / Emergency</span>
-        </Button>
-      </header>
+          Skip Audio
+        </button>
+      </div>
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-between px-4 pb-6 pt-2">
-        {/* Center avatar */}
-        <div className="flex-1 flex items-center justify-center">
-          <div
-            className={`relative h-40 w-40 md:h-52 md:w-52 rounded-full bg-white overflow-hidden flex items-center justify-center transition-all duration-300 ${speakingGlowClass}`}
-          >
-            <img
-              src={DOCTOR_AVATAR_SRC}
-              alt="SehatBeat doctor assistant"
-              className="h-full w-full object-cover"
-            />
-          </div>
+      {/* Doctor Avatar - absolute center with glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[105] pointer-events-none">
+        <div className={`w-40 h-40 md:w-56 md:h-56 rounded-full overflow-hidden border-8 border-white bg-white transition-all duration-300 ${isPlaying ? 'animate-pulse shadow-[0_0_80px_rgba(255,255,255,0.9)] scale-110' : 'shadow-[0_0_30px_rgba(0,0,0,0.5)]'}`}>
+          <img 
+            src={DOCTOR_AVATAR_SRC} 
+            alt="Doctor" 
+            className="w-full h-full object-cover"
+            onError={(e) => { e.currentTarget.src = "https://ui-avatars.com/api/?name=Doc&background=0D8ABC&color=fff&size=256"; }}
+          />
         </div>
+      </div>
 
-        {/* Bottom language choice section */}
-        <section className="w-full max-w-5xl">
-          <div className="mb-4 text-center">
-            <p className="text-sm md:text-base font-medium text-slate-800">
-              Choose your preferred language to continue
-            </p>
-          </div>
+      {/* Tappable Halves */}
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          handleInteraction();
+          handleLanguageSelect("en");
+        }}
+        className="flex-1 w-full h-[50vh] bg-blue-600 hover:bg-blue-500 active:bg-blue-700 flex flex-col items-center justify-start pt-20 transition-colors focus:outline-none"
+      >
+        <span className="text-white text-6xl md:text-8xl font-black tracking-tight drop-shadow-2xl">
+          English
+        </span>
+      </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[50vh] md:h-[45vh]">
-            {/* English button */}
-            <button
-              type="button"
-              onClick={() => handleSelectLanguage("en")}
-              className={`group relative flex flex-col items-center justify-center rounded-3xl bg-blue-600 text-white shadow-xl shadow-blue-500/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/80 transition-transform duration-200 hover:scale-[1.02] active:scale-[0.99] ${
-                shouldShake ? "sehatbeat-shake-once" : ""
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl md:text-3xl font-semibold">English</span>
-                <Volume2 className="w-7 h-7 md:w-8 md:h-8" />
-              </div>
-              <p className="text-xs md:text-sm text-blue-100 max-w-xs text-center">
-                Talk to SehatBeat AI in English about symptoms, medicines, and reminders.
-              </p>
-            </button>
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          handleInteraction();
+          handleLanguageSelect("hi");
+        }}
+        className="flex-1 w-full h-[50vh] bg-green-600 hover:bg-green-500 active:bg-green-700 flex flex-col items-center justify-end pb-20 transition-colors focus:outline-none"
+      >
+        <span className="text-white text-6xl md:text-8xl font-black tracking-tight drop-shadow-2xl">
+          हिंदी
+        </span>
+      </button>
 
-            {/* Hindi button */}
-            <button
-              type="button"
-              onClick={() => handleSelectLanguage("hi")}
-              className={`group relative flex flex-col items-center justify-center rounded-3xl bg-emerald-600 text-white shadow-xl shadow-emerald-500/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/80 transition-transform duration-200 hover:scale-[1.02] active:scale-[0.99] ${
-                shouldShake ? "sehatbeat-shake-once" : ""
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl md:text-3xl font-semibold">हिंदी</span>
-                <Volume2 className="w-7 h-7 md:w-8 md:h-8" />
-              </div>
-              <p className="text-xs md:text-sm text-emerald-100 max-w-xs text-center">
-                SehatBeat AI से हिंदी में बात करें — लक्षण, दवाइयाँ और रिमांडर्स के बारे में।
-              </p>
-            </button>
-          </div>
-        </section>
-      </main>
-
-      {/* Tap-to-start overlay to comply with browser audio policies */}
-      {!hasStarted && (
-        <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <button
-            type="button"
-            className="rounded-2xl bg-white px-8 py-4 text-base md:text-lg font-semibold text-slate-900 shadow-xl shadow-black/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-400"
-            onClick={() => setHasStarted(true)}
-          >
-            Tap to Start Audio Experience
-          </button>
+      {/* Tap to start hint */}
+      {!hasInteracted && (
+        <div className="absolute top-[70%] left-1/2 -translate-x-1/2 z-[110] pointer-events-none text-center bg-black/60 px-6 py-4 rounded-3xl backdrop-blur-md">
+          <p className="text-white text-xl md:text-2xl font-bold animate-bounce drop-shadow-lg">
+            Tap anywhere to listen<br/>सुनने के लिए कहीं भी टैप करें
+          </p>
         </div>
       )}
     </div>
   );
-};
-
-export default Onboarding;
-
+}

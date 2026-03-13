@@ -12,6 +12,7 @@ import { useToast } from "../../hooks/use-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import offlineHealthCache from "@/lib/offlineHealthCache.json";
 import { toast as sonnerToast } from "@/components/ui/sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type AppLanguage = "en" | "hi";
 
@@ -68,7 +69,10 @@ function mapSeverityLevel(severityText: string | undefined): StructuredResponse[
 function getStoredLanguage(): AppLanguage {
   if (typeof window === "undefined") return "en";
   try {
-    const stored = window.localStorage?.getItem("sehatbeat_language");
+    // Prefer new onboarding key, fall back to legacy key if present
+    const storedNew = window.localStorage?.getItem("sehatbeat_lang");
+    const storedLegacy = window.localStorage?.getItem("sehatbeat_language");
+    const stored = storedNew || storedLegacy;
     return stored === "hi" ? "hi" : "en";
   } catch {
     return "en";
@@ -354,6 +358,7 @@ function buildOfflineResponse(userInput: string): StructuredResponse | null {
 // ─── Main component ─────────────────────────────────────────────────────────────
 
 export const AIAssistant = () => {
+  const { language, setLanguage, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -362,7 +367,8 @@ export const AIAssistant = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
+  
+  // Note: `language` state + `setLanguage` now come from LanguageContext
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -490,8 +496,8 @@ export const AIAssistant = () => {
             { id: tid, type: "bot", content: "", timestamp: new Date(), structuredData: offlineData },
           ]);
           toast({
-            title: "Offline mode",
-            description: "You are offline. Showing saved first-aid guidance. For detailed AI analysis, reconnect to the internet.",
+            title: t("offline_mode"),
+            description: t("offline_mode_desc"),
           });
         } else {
           savePendingQuery(msg);
@@ -500,13 +506,13 @@ export const AIAssistant = () => {
             {
               id: tid,
               type: "bot",
-              content: "I don't have this saved offline. I have saved your question and will ask the AI as soon as your internet connects.",
+              content: t("saved_for_later_desc"),
               timestamp: new Date(),
             },
           ]);
           toast({
-            title: "Saved for later",
-            description: "This question will be sent to SehatBeat AI automatically when your internet returns.",
+            title: t("saved_for_later"),
+            description: t("saved_for_later_desc"),
           });
         }
         return;
@@ -531,8 +537,8 @@ export const AIAssistant = () => {
         setIsLoading(false);
         if (structured.severityLevel === "emergency") {
           toast({
-            title: "🚨 Emergency Detected",
-            description: "Call 112 or go to nearest hospital immediately.",
+            title: t("emergency_detected"),
+            description: t("emergency_desc"),
             variant: "destructive",
           });
         }
@@ -550,8 +556,8 @@ export const AIAssistant = () => {
         );
         setIsLoading(false);
         toast({
-          title: "Connection Error",
-          description: "Unable to reach the SehatBeat analysis service. Please try again or check your connection.",
+          title: t("connection_error"),
+          description: t("connection_error_desc"),
           variant: "destructive",
         });
       }
@@ -613,7 +619,7 @@ export const AIAssistant = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        aria-label="Open SehatBeat AI"
+        aria-label={t("open_ai")}
         className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 lg:bottom-8 lg:right-8 flex items-center justify-center"
       >
         <div className="relative">
@@ -650,26 +656,26 @@ export const AIAssistant = () => {
           </div>
           {!isMinimized && (
             <div>
-              <p className="font-bold text-white text-sm leading-tight">SehatBeat AI</p>
+              <p className="font-bold text-white text-sm leading-tight">{t("ai_title")}</p>
               <div className="flex flex-col gap-0.5">
                 <p className="text-white/80 text-[11px] flex items-center gap-1">
                   <span className={`inline-block w-2 h-2 rounded-full ${isOnline ? "bg-emerald-300" : "bg-amber-200"}`} />
-                  {isOnline ? "Online (AI Active)" : "Offline Mode (Basic First-Aid)"}
+                  {isOnline ? t("ai_online") : t("ai_offline")}
                 </p>
                 <p className="text-white/70 text-[11px] flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
                   {isOnline
                     ? isLoading
-                      ? "Analyzing with Gemini AI..."
-                      : "Powered by Gemini AI"
-                    : "Using local, lightweight guidance"}
+                      ? t("ai_analyzing")
+                      : t("ai_powered_by")
+                    : t("ai_local_guidance")}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <button
                     type="button"
                     onClick={() => {
                       setLanguage("en");
-                      try { window.localStorage?.setItem("sehatbeat_language", "en"); } catch { /* ignore */ }
+                      try { window.localStorage?.setItem("sehatbeat_lang", "en"); } catch { /* ignore */ }
                     }}
                     className={`px-2 py-0.5 rounded-full text-[10px] border ${
                       language === "en"
@@ -683,7 +689,7 @@ export const AIAssistant = () => {
                     type="button"
                     onClick={() => {
                       setLanguage("hi");
-                      try { window.localStorage?.setItem("sehatbeat_language", "hi"); } catch { /* ignore */ }
+                      try { window.localStorage?.setItem("sehatbeat_lang", "hi"); } catch { /* ignore */ }
                     }}
                     className={`px-2 py-0.5 rounded-full text-[10px] border ${
                       language === "hi"
@@ -726,7 +732,7 @@ export const AIAssistant = () => {
                         ))}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {language === "hi" ? "AI विश्लेषण कर रहा है..." : "Analyzing with AI..."}
+                        {t("ai_analyzing_short")}
                       </span>
                     </div>
                   ) : msg.structuredData ? (
@@ -772,10 +778,8 @@ export const AIAssistant = () => {
                   const rec = recognitionRef.current;
                   if (!rec) {
                     toast({
-                      title: language === "hi" ? "वॉइस समर्थित नहीं" : "Voice not supported",
-                      description: language === "hi"
-                        ? "आपका ब्राउज़र स्पीच रिकग्निशन को सपोर्ट नहीं करता।"
-                        : "Your browser does not support speech recognition. Try Chrome.",
+                      title: t("voice_not_supported"),
+                      description: t("voice_not_supported_desc"),
                     });
                     return;
                   }
