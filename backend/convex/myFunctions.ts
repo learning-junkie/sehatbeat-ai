@@ -1007,6 +1007,7 @@ export const analyzeHealthSymptoms = internalAction({
 export const callPerplexityAI = action({
   args: {
     symptoms: v.string(),
+    systemPrompt: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -1024,6 +1025,20 @@ export const callPerplexityAI = action({
           error: "Perplexity API key not configured"
         };
       }
+
+      // Build dynamic system prompt — use caller-supplied value or fall back to the default
+      const systemPrompt = args.systemPrompt ?? `You are SehatBeat AI, an expert medical health assistant with deep knowledge of symptoms, diseases, treatments, and medical best practices.
+
+Your role is to:
+- Analyze health symptoms provided by the user accurately and empathetically
+- Offer clear, structured, and actionable health guidance
+- Indicate severity levels honestly (mild / moderate / severe / emergency)
+- Recommend when to seek immediate medical attention
+- Suggest relevant medical tests or specialist referrals where appropriate
+- Always remind the user that your guidance does not replace professional medical advice
+
+Tone: compassionate, professional, and easy to understand for non-medical users.
+Format: use markdown with clear headers and bullet points for readability.`;
       
       // Call Perplexity AI API
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -1034,10 +1049,16 @@ export const callPerplexityAI = action({
         },
         body: JSON.stringify({
           model: 'llama-3.1-sonar-small-128k-online',
-          messages: [{
-            role: 'user',
-            content: `Analyze these health symptoms: "${args.symptoms}". Provide a structured response with: 1) Problem summary, 2) Possible causes, 3) Severity level, 4) Immediate steps to take, 5) When to seek medical help, 6) Recommended tests, 7) Recommended specialist. Format as markdown.`
-          }],
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt,
+            },
+            {
+              role: 'user',
+              content: `Analyze these health symptoms: "${args.symptoms}". Provide a structured response with: 1) Problem summary, 2) Possible causes, 3) Severity level, 4) Immediate steps to take, 5) When to seek medical help, 6) Recommended tests, 7) Recommended specialist. Format as markdown.`,
+            },
+          ],
           max_tokens: 1000,
           temperature: 0.3,
         }),

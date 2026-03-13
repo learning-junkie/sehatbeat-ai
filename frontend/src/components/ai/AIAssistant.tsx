@@ -13,6 +13,8 @@ import { useNetwork } from "@/hooks/useNetwork";
 import offlineHealthCache from "@/lib/offlineHealthCache.json";
 import { toast as sonnerToast } from "@/components/ui/sonner";
 
+type AppLanguage = "en" | "hi";
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface StructuredResponse {
@@ -61,11 +63,24 @@ function mapSeverityLevel(severityText: string | undefined): StructuredResponse[
   return "info";
 }
 
-async function callNextSymptomAPI(message: string): Promise<StructuredResponse> {
+function getStoredLanguage(): AppLanguage {
+  if (typeof window === "undefined") return "en";
+  try {
+    const stored = window.localStorage?.getItem("sehatbeat_language");
+    return stored === "hi" ? "hi" : "en";
+  } catch {
+    return "en";
+  }
+}
+
+async function callNextSymptomAPI(
+  message: string,
+  language: AppLanguage = "en"
+): Promise<StructuredResponse> {
   const res = await fetch("/api/analyze-symptoms", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ symptoms: message }),
+    body: JSON.stringify({ symptoms: message, language }),
   });
 
   if (!res.ok) {
@@ -270,6 +285,7 @@ export const AIAssistant = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -298,7 +314,7 @@ export const AIAssistant = () => {
     const r = new SR();
     r.continuous = false;
     r.interimResults = false;
-    r.lang = navigator.language || "en-IN";
+    r.lang = getStoredLanguage() === "hi" ? "hi-IN" : "en-IN";
     r.onresult = event => {
       const transcript = Array.from(event.results)
         .map(result => result[0]?.transcript ?? "")
@@ -327,6 +343,13 @@ export const AIAssistant = () => {
       }
     };
   }, []);
+
+  // Update recognition language when user changes app language
+  useEffect(() => {
+    const rec = recognitionRef.current as SpeechRecognition | null;
+    if (!rec) return;
+    rec.lang = language === "hi" ? "hi-IN" : "en-IN";
+  }, [language]);
 
   // When connection comes back, flush any pending queries from localStorage
   useEffect(() => {
@@ -361,7 +384,7 @@ export const AIAssistant = () => {
         if (!q) continue;
 
         try {
-          const structured = await callNextSymptomAPI(q);
+          const structured = await callNextSymptomAPI(q, getStoredLanguage());
           const id = `${item.timestamp}-${Math.random().toString(36).slice(2)}`;
 
           setMessages(prev => [
@@ -463,7 +486,7 @@ export const AIAssistant = () => {
       setIsLoading(true);
 
       try {
-        const structured = await callNextSymptomAPI(msg);
+        const structured = await callNextSymptomAPI(msg, language);
         setMessages(prev =>
           prev.map(m =>
             m.id === tid
@@ -545,7 +568,7 @@ export const AIAssistant = () => {
     if (!text) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = navigator.language || "en-IN";
+    utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
     utterance.rate = 1;
     utterance.pitch = 1;
 
@@ -555,7 +578,7 @@ export const AIAssistant = () => {
     } catch {
       // ignore speech synthesis errors
     }
-  }, [messages]);
+  }, [messages, language]);
 
   // ── Floating button ──────────────────────────────────────────────────────────
 
@@ -616,6 +639,48 @@ export const AIAssistant = () => {
                       : "Powered by Perplexity AI"
                     : "Using local, lightweight guidance"}
                 </p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLanguage("en");
+                      if (typeof window !== "undefined") {
+                        try {
+                          window.localStorage?.setItem("sehatbeat_language", "en");
+                        } catch {
+                          // ignore
+                        }
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded-full text-[10px] border ${
+                      language === "en"
+                        ? "bg-white text-blue-700 border-white"
+                        : "bg-white/10 text-white border-white/40"
+                    }`}
+                  >
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLanguage("hi");
+                      if (typeof window !== "undefined") {
+                        try {
+                          window.localStorage?.setItem("sehatbeat_language", "hi");
+                        } catch {
+                          // ignore
+                        }
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded-full text-[10px] border ${
+                      language === "hi"
+                        ? "bg-white text-blue-700 border-white"
+                        : "bg-white/10 text-white border-white/40"
+                    }`}
+                  >
+                    हिन्दी
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { symptoms, userId } = await request.json();
+    const { symptoms, userId, language } = await request.json();
 
     if (!symptoms) {
       return NextResponse.json(
@@ -10,6 +10,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const lang: "en" | "hi" =
+      language === "hi" || language === "hi-IN" ? "hi" : "en";
 
     // Check if input is health-related
     const healthKeywords = [
@@ -30,6 +33,23 @@ export async function POST(request: NextRequest) {
     );
     
     if (!isHealthRelated) {
+      if (lang === "hi") {
+        return NextResponse.json({
+          analysis: `मैं एक विशेष स्वास्थ्य और मेडिकल लक्षण विश्लेषक हूँ। मैं आपको केवल स्वास्थ्य से जुड़े विषयों जैसे लक्षण, बीमारियाँ, चोटें और सामान्य वेलनेस में मदद कर सकता/सकती हूँ।
+
+आपने यह पूछा है: "${symptoms}"
+
+कृपया अपने स्वास्थ्य लक्षणों, मेडिकल चिंताओं या वेलनेस से जुड़े किसी भी प्रश्न को विस्तार से लिखें। मैं आपको स्वास्थ्य संबंधी मार्गदर्शन और सुझाव दूँगा/दूँगी।`,
+          severity: "लागू नहीं",
+          recommendations: [
+            "स्वास्थ्य लक्षणों या मेडिकल चिंताओं का विवरण लिखें",
+            "किसी विशेष बीमारी या समस्या के बारे में पूछें",
+            "वेलनेस और प्रिवेंशन के बारे में प्रश्न पूछें",
+            "दर्द या चोट के लिए मार्गदर्शन लें",
+          ],
+        });
+      }
+
       return NextResponse.json({
         analysis: `I'm a specialized health and medical symptom analyzer. I can help you with health-related topics like symptoms, medical conditions, injuries, and general wellness. 
 
@@ -83,17 +103,21 @@ Please describe any health symptoms, medical concerns, or wellness questions you
         messages: [
           {
             role: 'system',
-            content: `You are a medical AI assistant. Analyze the user's symptoms and provide:
+            content: `You are a medical AI assistant for patients in India. Analyze the user's symptoms and provide:
 1. A brief analysis of possible causes
 2. Severity level (Low/Moderate/High)
 3. 5-7 actionable recommendations
 4. When to seek medical attention
 
+The user has selected interface language: ${lang === "hi" ? "Hindi" : "English"}.
+- If Hindi is selected, respond fully in clear, simple Hindi that an Indian patient can easily understand.
+- If English is selected, respond in clear, simple English, but you may occasionally use common Indian medical terms.
+
 Keep responses concise, helpful, and always include a disclaimer about consulting healthcare professionals.`
           },
           {
             role: 'user',
-            content: `Analyze these symptoms: ${symptoms}. Provide a structured response with analysis, severity, and recommendations.`
+            content: `Analyze these symptoms: ${symptoms}. Provide a structured response with analysis, severity, and recommendations, in the same language as the interface setting (${lang === "hi" ? "Hindi" : "English"}).`
           }
         ],
         max_tokens: 500,

@@ -1,23 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  Search, 
-  ShoppingCart, 
+import {
+  Search,
+  ShoppingCart,
   Plus,
   Minus,
   Star,
   Truck,
   Shield,
   Clock,
-  Loader2
+  Loader2,
+  SlidersHorizontal,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { useMedicines, useCart } from "@/hooks/useConvex";
 import { useAuth } from "@clerk/clerk-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 
 const categories = ['All', 'Pain Relief', 'Vitamins', 'Digestive Health', 'Antibiotics', 'Allergy'];
 
@@ -25,8 +29,14 @@ const Medicine = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [sortBy, setSortBy] = useState<"relevance" | "priceLowHigh" | "priceHighLow">("relevance");
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [prescriptionOnly, setPrescriptionOnly] = useState(false);
   const { isSignedIn } = useAuth();
   const { toast } = useToast();
+  const { isOnline } = useNetwork();
+  const [isVoiceSearching, setIsVoiceSearching] = useState(false);
+  const searchRecognitionRef = useRef<SpeechRecognition | null>(null);
   
   // Fetch medicines from Convex
   const medicines = useMedicines(
@@ -48,7 +58,82 @@ const Medicine = () => {
     return () => clearTimeout(timer);
   }, [medicines]);
 
-  const filteredMedicines = medicines || [];
+  // Voice search (speech-to-text) for medicine search bar
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const AnyWindow = window as unknown as {
+      SpeechRecognition?: typeof SpeechRecognition;
+      webkitSpeechRecognition?: typeof SpeechRecognition;
+    };
+    const SR = AnyWindow.SpeechRecognition || AnyWindow.webkitSpeechRecognition;
+    if (!SR) {
+      searchRecognitionRef.current = null;
+      return;
+    }
+
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = false;
+
+    let lang: "en-IN" | "hi-IN" = "en-IN";
+    try {
+      const stored = window.localStorage?.getItem("sehatbeat_language");
+      if (stored === "hi") lang = "hi-IN";
+    } catch {
+      // ignore storage errors
+    }
+    r.lang = lang;
+
+    r.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0]?.transcript ?? "")
+        .join(" ")
+        .trim();
+      if (transcript) {
+        setSearchTerm(transcript);
+      }
+    };
+    r.onend = () => {
+      setIsVoiceSearching(false);
+    };
+    r.onerror = () => {
+      setIsVoiceSearching(false);
+    };
+
+    searchRecognitionRef.current = r;
+
+    return () => {
+      try {
+        r.onresult = null as any;
+        r.onend = null as any;
+        r.onerror = null as any;
+        r.stop();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+  const baseMedicines = Array.isArray(medicines) ? medicines : [];
+
+  let filteredMedicines = baseMedicines;
+
+  if (inStockOnly) {
+    filteredMedicines = filteredMedicines.filter((medicine) => medicine.inStock);
+  }
+
+  if (prescriptionOnly) {
+    filteredMedicines = filteredMedicines.filter((medicine) => medicine.prescriptionRequired);
+  }
+
+  if (sortBy === "priceLowHigh") {
+    filteredMedicines = [...filteredMedicines].sort(
+      (a, b) => (a.price || 0) - (b.price || 0)
+    );
+  } else if (sortBy === "priceHighLow") {
+    filteredMedicines = [...filteredMedicines].sort(
+      (a, b) => (b.price || 0) - (a.price || 0)
+    );
+  }
 
   const addToCart = async (medicineId: string) => {
     if (!isSignedIn) {
@@ -314,6 +399,13 @@ const Medicine = () => {
           </div>
         )}
 
+        {/* Offline indicator */}
+        {!isOnline && (
+          <div className="mb-6 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+            You appear to be offline. Some updates or live prices may not be available.
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -332,11 +424,41 @@ const Medicine = () => {
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search medicines..."
+              placeholder="Search medicines (you can also use voice)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
             />
+            <button
+              type="button"
+              aria-label={isVoiceSearching ? "Stop voice search" : "Start voice search"}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 border text-muted-foreground bg-background hover:bg-muted transition-colors ${
+                isVoiceSearching ? "bg-red-500 text-white border-red-500 hover:bg-red-600" : ""
+              }`}
+              onClick={() => {
+                const rec = searchRecognitionRef.current;
+                if (!rec) {
+                  toast({
+                    title: "Voice search not supported",
+                    description: "Your browser does not support speech recognition.",
+                  });
+                  return;
+                }
+                try {
+                  if (isVoiceSearching) {
+                    rec.stop();
+                    setIsVoiceSearching(false);
+                  } else {
+                    rec.start();
+                    setIsVoiceSearching(true);
+                  }
+                } catch {
+                  setIsVoiceSearching(false);
+                }
+              }}
+            >
+              {isVoiceSearching ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+            </button>
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
@@ -351,6 +473,47 @@ const Medicine = () => {
                 {category}
               </Button>
             ))}
+          </div>
+
+          {/* Advanced filters & sorting */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Filters</span>
+              </div>
+              <Button
+                type="button"
+                variant={inStockOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setInStockOnly((prev) => !prev)}
+              >
+                In stock only
+              </Button>
+              <Button
+                type="button"
+                variant={prescriptionOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPrescriptionOnly((prev) => !prev)}
+              >
+                Prescription only
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Sort by</span>
+              <select
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(e.target.value as "relevance" | "priceLowHigh" | "priceHighLow")
+                }
+                className="border border-input bg-background rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="relevance">Relevance</option>
+                <option value="priceLowHigh">Price: Low to High</option>
+                <option value="priceHighLow">Price: High to Low</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -376,6 +539,19 @@ const Medicine = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Results summary */}
+        {filteredMedicines.length > 0 && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Showing{" "}
+            <span className="font-semibold text-foreground">
+              {filteredMedicines.length}
+            </span>{" "}
+            medicines
+            {inStockOnly && " • In stock only"}
+            {prescriptionOnly && " • Prescription only"}
+          </div>
         )}
 
         {/* No Medicines Message */}
