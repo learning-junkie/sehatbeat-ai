@@ -6,9 +6,12 @@ import {
   X, Send, Bot, User, Minimize2, Maximize2,
   AlertTriangle, CheckCircle, AlertCircle, AlertOctagon,
   Info, Stethoscope, Pill, Activity, Phone, Clock,
-  MessageCircle, Sparkles,
+  MessageCircle, Sparkles, Mic, MicOff,
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
+import { useNetwork } from "@/hooks/useNetwork";
+import offlineHealthCache from "@/lib/offlineHealthCache.json";
+import { toast as sonnerToast } from "@/components/ui/sonner";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,84 +35,61 @@ interface Message {
   structuredData?: StructuredResponse;
 }
 
-// ─── Perplexity API call ────────────────────────────────────────────────────────
+// ─── Helpers for backend + offline cache ────────────────────────────────────────
 
-const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY as string | undefined;
+type OfflineCacheEntry = {
+  keywords: string[];
+  problem: string;
+  severity: string;
+  severityLevel: "emergency" | "high" | "moderate" | "mild" | "info";
+  immediateSteps: string[];
+  whenToSeekHelp: string[];
+  specialist: string;
+  disclaimer: string;
+  possibleCauses?: string[];
+};
 
-const SYSTEM_PROMPT = `You are SehatBeat AI, a compassionate medical assistant for Indian users. Respond like a friendly experienced doctor.
+const OFFLINE_CACHE = offlineHealthCache as Record<string, OfflineCacheEntry>;
 
-CRITICAL RULES:
-1. Only answer health, symptoms, medicines, or wellness questions.
-2. For unrelated questions return the "not health related" JSON.
-3. Always recommend consulting a real doctor for serious conditions.
-4. Mention Indian hospitals (AIIMS, Apollo, Fortis, govt hospitals) when relevant.
-
-ALWAYS respond with ONLY valid JSON — no text outside the JSON object:
-
-For health questions use:
-{
-  "problem": "Name of health concern",
-  "severity": "One sentence describing severity",
-  "severityLevel": "emergency|high|moderate|mild|info",
-  "possibleCauses": ["cause 1", "cause 2", "cause 3"],
-  "immediateSteps": ["step 1", "step 2", "step 3"],
-  "whenToSeekHelp": ["warning sign 1", "warning sign 2"],
-  "specialist": "Doctor type to consult",
-  "disclaimer": "Brief reminder to consult a professional"
+function mapSeverityLevel(severityText: string | undefined): StructuredResponse["severityLevel"] {
+  if (!severityText) return "info";
+  const s = severityText.toLowerCase();
+  if (s.includes("emergency") || s.includes("critical") || s.includes("life-threatening")) return "emergency";
+  if (s.includes("high") || s.includes("severe")) return "high";
+  if (s.includes("moderate")) return "moderate";
+  if (s.includes("low") || s.includes("mild")) return "mild";
+  return "info";
 }
 
-For non-health questions use:
-{
-  "problem": "Outside My Expertise",
-  "severity": "Not applicable",
-  "severityLevel": "info",
-  "possibleCauses": [],
-  "immediateSteps": ["I specialise in health topics only. Please describe your symptoms or a health concern and I will help you."],
-  "whenToSeekHelp": [],
-  "specialist": "N/A",
-  "disclaimer": "SehatBeat AI handles health-related queries only."
-}`;
+async function callNextSymptomAPI(message: string): Promise<StructuredResponse> {
+  const res = await fetch("/api/analyze-symptoms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ symptoms: message }),
+  });
 
-async function callPerplexity(
-  userMessage: string,
-  onDone: (parsed: StructuredResponse | null, raw: string) => void,
-  onError: (msg: string) => void
-) {
-  if (!PERPLEXITY_API_KEY) {
-    onError("VITE_PERPLEXITY_API_KEY is missing in your .env file. Add it and restart the dev server.");
-    return;
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`API ${res.status}: ${txt.slice(0, 200)}`);
   }
-  try {
-    const res = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-sonar-small-128k-online",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 900,
-        temperature: 0.2,
-        stream: false,
-      }),
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`API ${res.status}: ${txt.slice(0, 200)}`);
-    }
-    const json = await res.json();
-    const raw: string = json.choices?.[0]?.message?.content ?? "";
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) { onDone(null, raw); return; }
-    const parsed = JSON.parse(match[0]) as StructuredResponse;
-    onDone(parsed, raw);
-  } catch (err) {
-    onError(err instanceof Error ? err.message : String(err));
-  }
+
+  const data: {
+    analysis: string;
+    severity: string;
+    recommendations: string[];
+  } = await res.json();
+
+  return {
+    problem: "Symptom Analysis",
+    severity: data.severity || "Overall severity could not be determined precisely.",
+    severityLevel: mapSeverityLevel(data.severity),
+    possibleCauses: [],
+    immediateSteps: data.recommendations ?? [],
+    whenToSeekHelp: [],
+    specialist: "Nearest doctor or health centre",
+    disclaimer:
+      "This AI-generated triage is informational only and must not replace an in-person consultation with a qualified healthcare professional, especially if symptoms are severe or worsening.",
+  };
 }
 
 // ─── Severity styles ────────────────────────────────────────────────────────────
@@ -239,6 +219,46 @@ const WELCOME_DATA: StructuredResponse = {
   disclaimer: "I provide informational guidance only. Always consult a licensed doctor for diagnosis and treatment.",
 };
 
+function savePendingQuery(query: string) {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+  try {
+    const key = "sehatbeat_pending_queries";
+    const existing = JSON.parse(localStorage.getItem(key) || "[]") as { query: string; timestamp: string }[];
+    const next = [
+      ...existing,
+      {
+        query,
+        timestamp: new Date().toISOString(),
+      },
+    ].slice(-50); // keep latest 50 only
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    // ignore storage errors in offline mode
+  }
+}
+
+function buildOfflineResponse(userInput: string): StructuredResponse | null {
+  const text = userInput.toLowerCase();
+
+  for (const entry of Object.values(OFFLINE_CACHE)) {
+    const match = entry.keywords.some(k => text.includes(k.toLowerCase()));
+    if (match) {
+      return {
+        problem: entry.problem,
+        severity: entry.severity,
+        severityLevel: entry.severityLevel,
+        possibleCauses: entry.possibleCauses ?? [],
+        immediateSteps: entry.immediateSteps,
+        whenToSeekHelp: entry.whenToSeekHelp,
+        specialist: entry.specialist,
+        disclaimer: entry.disclaimer,
+      };
+    }
+  }
+
+  return null;
+}
+
 // ─── Main component ─────────────────────────────────────────────────────────────
 
 export const AIAssistant = () => {
@@ -249,51 +269,246 @@ export const AIAssistant = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { isOnline } = useNetwork();
+  const wasOnlineRef = useRef<boolean>(isOnline);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
   useEffect(() => {
     if (isOpen && !isMinimized) setTimeout(() => inputRef.current?.focus(), 120);
   }, [isOpen, isMinimized]);
 
-  const sendMessage = useCallback(async (text?: string) => {
-    const msg = (text ?? input).trim();
-    if (!msg || isLoading) return;
-
-    const uid = Date.now().toString();
-    const tid = (Date.now() + 1).toString();
-
-    setMessages(prev => [
-      ...prev,
-      { id: uid, type: "user", content: msg, timestamp: new Date() },
-      { id: tid, type: "bot",  content: "",  timestamp: new Date(), isThinking: true },
-    ]);
-    setInput("");
-    setIsLoading(true);
-
-    await callPerplexity(
-      msg,
-      (parsed, raw) => {
-        setMessages(prev => prev.map(m =>
-          m.id === tid ? { ...m, isThinking: false, content: raw, structuredData: parsed ?? undefined } : m
-        ));
-        setIsLoading(false);
-        if (parsed?.severityLevel === "emergency") {
-          toast({ title: "🚨 Emergency Detected", description: "Call 112 or go to nearest hospital immediately.", variant: "destructive" });
-        }
-      },
-      (errMsg) => {
-        setMessages(prev => prev.map(m =>
-          m.id === tid ? { ...m, isThinking: false, content: `Unable to connect to AI.\n\n${errMsg}` } : m
-        ));
-        setIsLoading(false);
-        toast({ title: "Connection Error", description: "Check your VITE_PERPLEXITY_API_KEY in .env", variant: "destructive" });
+  // Initialise browser speech recognition lazily
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const AnyWindow = window as unknown as {
+      SpeechRecognition?: typeof SpeechRecognition;
+      webkitSpeechRecognition?: typeof SpeechRecognition;
+    };
+    const SR = AnyWindow.SpeechRecognition || AnyWindow.webkitSpeechRecognition;
+    if (!SR) {
+      recognitionRef.current = null;
+      return;
+    }
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = false;
+    r.lang = navigator.language || "en-IN";
+    r.onresult = event => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0]?.transcript ?? "")
+        .join(" ")
+        .trim();
+      if (transcript) {
+        setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
       }
-    );
-  }, [input, isLoading, toast]);
+    };
+    r.onend = () => {
+      setIsListening(false);
+    };
+    r.onerror = () => {
+      setIsListening(false);
+    };
+    recognitionRef.current = r;
+
+    return () => {
+      try {
+        r.onresult = null as any;
+        r.onend = null as any;
+        r.onerror = null as any;
+        r.stop();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  // When connection comes back, flush any pending queries from localStorage
+  useEffect(() => {
+    if (!isOnline || wasOnlineRef.current) {
+      wasOnlineRef.current = isOnline;
+      return;
+    }
+
+    wasOnlineRef.current = true;
+
+    const key = "sehatbeat_pending_queries";
+
+    const syncPending = async () => {
+      if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+      let pending: { query: string; timestamp: string }[] = [];
+      try {
+        pending = JSON.parse(localStorage.getItem(key) || "[]") as {
+          query: string;
+          timestamp: string;
+        }[];
+      } catch {
+        pending = [];
+      }
+
+      if (!pending.length) return;
+
+      // Clear the queue early to avoid duplicate sends on rapid reconnects
+      localStorage.removeItem(key);
+
+      for (const item of pending) {
+        const q = item.query.trim();
+        if (!q) continue;
+
+        try {
+          const structured = await callNextSymptomAPI(q);
+          const id = `${item.timestamp}-${Math.random().toString(36).slice(2)}`;
+
+          setMessages(prev => [
+            ...prev,
+            {
+              id,
+              type: "bot",
+              content: "",
+              timestamp: new Date(),
+              structuredData: structured,
+            },
+          ]);
+
+          const topic =
+            q.length > 60
+              ? `${q.slice(0, 57).trimEnd()}...`
+              : q || "your earlier health question";
+
+          sonnerToast("Your offline question has been answered!", {
+            description: `Your offline question about "${topic}" has been analyzed by SehatBeat AI.`,
+          });
+        } catch (err) {
+          // If sending fails, re-queue this query so it isn't lost
+          savePendingQuery(q);
+        }
+      }
+    };
+
+    void syncPending();
+  }, [isOnline]);
+
+  const sendMessage = useCallback(
+    async (text?: string) => {
+      const msg = (text ?? input).trim();
+      if (!msg || isLoading) return;
+
+      const uid = Date.now().toString();
+      const tid = (Date.now() + 1).toString();
+
+      // Always show the user message first
+      setMessages(prev => [
+        ...prev,
+        { id: uid, type: "user", content: msg, timestamp: new Date() },
+      ]);
+      setInput("");
+
+      // If offline, try offline cache first; on miss, store-and-forward
+      if (!isOnline) {
+        const offlineData = buildOfflineResponse(msg);
+
+        if (offlineData) {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: tid,
+              type: "bot",
+              content: "",
+              timestamp: new Date(),
+              structuredData: offlineData,
+            },
+          ]);
+          toast({
+            title: "Offline mode",
+            description:
+              "You are offline. Showing saved first-aid guidance. For detailed AI analysis, reconnect to the internet.",
+          });
+        } else {
+          savePendingQuery(msg);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: tid,
+              type: "bot",
+              content:
+                "I don't have this saved offline. I have saved your question and will ask the AI as soon as your internet connects.",
+              timestamp: new Date(),
+            },
+          ]);
+          toast({
+            title: "Saved for later",
+            description:
+              "This question will be sent to SehatBeat AI automatically when your internet returns.",
+          });
+        }
+        return;
+      }
+
+      // Online path: call Perplexity AI
+      setMessages(prev => [
+        ...prev,
+        {
+          id: tid,
+          type: "bot",
+          content: "",
+          timestamp: new Date(),
+          isThinking: true,
+        },
+      ]);
+      setIsLoading(true);
+
+      try {
+        const structured = await callNextSymptomAPI(msg);
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === tid
+              ? {
+                  ...m,
+                  isThinking: false,
+                  content: "",
+                  structuredData: structured,
+                }
+              : m
+          )
+        );
+        setIsLoading(false);
+        if (structured.severityLevel === "emergency") {
+          toast({
+            title: "🚨 Emergency Detected",
+            description: "Call 112 or go to nearest hospital immediately.",
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === tid
+              ? {
+                  ...m,
+                  isThinking: false,
+                  content: `Unable to connect to AI.\n\n${
+                    err instanceof Error ? err.message : String(err)
+                  }`,
+                }
+              : m
+          )
+        );
+        setIsLoading(false);
+        toast({
+          title: "Connection Error",
+          description:
+            "Unable to reach the SehatBeat analysis service. Please try again or check your connection.",
+          variant: "destructive",
+        });
+      }
+    },
+    [input, isLoading, isOnline, toast]
+  );
 
   // Listen for events dispatched by SehatBeatAI page (Analyze button)
   useEffect(() => {
@@ -306,6 +521,41 @@ export const AIAssistant = () => {
     window.addEventListener("sehatbeat-open-ai", handler);
     return () => window.removeEventListener("sehatbeat-open-ai", handler);
   }, [sendMessage]);
+
+  // Text-to-speech: speak latest bot message (structured or plain)
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") return;
+    if (!messages.length) return;
+    const last = [...messages].reverse().find(m => m.type === "bot" && !m.isThinking);
+    if (!last) return;
+
+    let text = last.content || "";
+    if (last.structuredData) {
+      const d = last.structuredData;
+      const parts: string[] = [
+        d.problem,
+        d.severity,
+        d.immediateSteps.length ? `Immediate steps: ${d.immediateSteps.join("; ")}` : "",
+        d.whenToSeekHelp.length ? `See a doctor if: ${d.whenToSeekHelp.join("; ")}` : "",
+        d.specialist && d.specialist !== "N/A" ? `Recommended specialist: ${d.specialist}` : "",
+        d.disclaimer,
+      ].filter(Boolean);
+      text = parts.join(". ");
+    }
+    if (!text) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = navigator.language || "en-IN";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // ignore speech synthesis errors
+    }
+  }, [messages]);
 
   // ── Floating button ──────────────────────────────────────────────────────────
 
@@ -340,15 +590,33 @@ export const AIAssistant = () => {
             <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-teal-500" />
+            <span
+              className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-teal-500 ${
+                isOnline ? "bg-emerald-400" : "bg-amber-300"
+              }`}
+            />
           </div>
           {!isMinimized && (
             <div>
               <p className="font-bold text-white text-sm leading-tight">SehatBeat AI</p>
-              <p className="text-white/70 text-xs flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                {isLoading ? "Analyzing..." : "Powered by Perplexity AI"}
-              </p>
+              <div className="flex flex-col gap-0.5">
+                <p className="text-white/80 text-[11px] flex items-center gap-1">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${
+                      isOnline ? "bg-emerald-300" : "bg-amber-200"
+                    }`}
+                  />
+                  {isOnline ? "Online (AI Active)" : "Offline Mode (Basic First-Aid)"}
+                </p>
+                <p className="text-white/70 text-[11px] flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  {isOnline
+                    ? isLoading
+                      ? "Analyzing with Perplexity..."
+                      : "Powered by Perplexity AI"
+                    : "Using local, lightweight guidance"}
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -414,17 +682,58 @@ export const AIAssistant = () => {
           {/* Input */}
           <div className="p-3 border-t flex-shrink-0">
             <div className="flex gap-2 items-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`w-9 h-9 rounded-full p-0 flex-shrink-0 ${
+                  isListening ? "bg-red-500 text-white hover:bg-red-600" : ""
+                }`}
+                onClick={() => {
+                  const rec = recognitionRef.current;
+                  if (!rec) {
+                    toast({
+                      title: "Voice not supported",
+                      description: "Your browser does not support speech recognition.",
+                    });
+                    return;
+                  }
+                  try {
+                    if (isListening) {
+                      rec.stop();
+                      setIsListening(false);
+                    } else {
+                      rec.start();
+                      setIsListening(true);
+                    }
+                  } catch {
+                    setIsListening(false);
+                  }
+                }}
+                aria-label={isListening ? "Stop listening" : "Start voice input"}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
               <Input
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
                 placeholder="Describe your symptoms..."
                 disabled={isLoading}
                 className="flex-1 text-sm rounded-full h-9 px-4"
               />
-              <Button onClick={() => sendMessage()} disabled={isLoading || !input.trim()} size="sm"
-                className="w-9 h-9 rounded-full p-0 bg-gradient-to-br from-blue-500 to-teal-500 hover:opacity-90 flex-shrink-0">
+              <Button
+                onClick={() => sendMessage()}
+                disabled={isLoading || !input.trim()}
+                size="sm"
+                className="w-9 h-9 rounded-full p-0 bg-gradient-to-br from-blue-500 to-teal-500 hover:opacity-90 flex-shrink-0"
+              >
                 {isLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>

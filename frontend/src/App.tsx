@@ -32,6 +32,33 @@ if (!PUBLISHABLE_KEY || PUBLISHABLE_KEY === 'pk_test_demo_key_for_development') 
 }
 
 const App = () => {
+  const isOffline =
+    typeof navigator !== "undefined" && navigator && !navigator.onLine;
+
+  // Offline mode: bypass Clerk entirely and show a stripped-down, read-only shell
+  if (isOffline) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4">
+            <div className="max-w-lg w-full text-center space-y-4">
+              <h1 className="text-2xl font-semibold">
+                SehatBeat (Offline Mode)
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                You&apos;re currently offline. The app is in a stripped-down,
+                read-only mode with only the AI assistant available.
+              </p>
+            </div>
+            <AIAssistant />
+          </div>
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
+
   // If Clerk is not configured, render without authentication
   if (!PUBLISHABLE_KEY) {
     return (

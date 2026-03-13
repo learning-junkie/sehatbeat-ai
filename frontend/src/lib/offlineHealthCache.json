@@ -1,0 +1,505 @@
+{
+  "headache_fever": {
+    "keywords": ["headache", "fever", "flu", "viral", "body pain"],
+    "problem": "Headache with Fever",
+    "severity": "Often due to viral infections like common cold or flu, but can rarely indicate something serious.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Rest in a cool, quiet, and dark room to reduce discomfort.",
+      "Drink plenty of water, ORS, or clear fluids to prevent dehydration.",
+      "Use a cold, damp cloth on the forehead and neck to reduce temperature.",
+      "Avoid strenuous physical activity until the fever and headache settle.",
+      "If you already use paracetamol safely, you may take a standard adult dose as advised previously by your doctor."
+    ],
+    "whenToSeekHelp": [
+      "Fever lasts more than 3 days or keeps coming back.",
+      "Severe, sudden headache with neck stiffness, confusion, or vomiting.",
+      "Rash, breathing difficulty, chest pain, or seizures.",
+      "You have other serious conditions (like uncontrolled diabetes, heart disease, or are pregnant)."
+    ],
+    "specialist": "General physician or internal medicine doctor",
+    "disclaimer": "This is general information only and not a diagnosis. Always consult a doctor or visit the nearest hospital, especially if symptoms are severe or worsening."
+  },
+  "chest_pain": {
+    "keywords": ["chest pain", "tight chest", "pressure chest", "burning chest"],
+    "problem": "Chest Pain or Tightness",
+    "severity": "Chest pain can be serious, especially if sudden, severe, or associated with breathlessness.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Stop all activity and sit or lie in a comfortable position with head elevated.",
+      "Stay calm and avoid walking or climbing stairs.",
+      "If you have been prescribed heart tablets (like sorbitrate) in the past, use them only as advised by your cardiologist.",
+      "Do not drive yourself to the hospital; ask someone to help or call an ambulance."
+    ],
+    "whenToSeekHelp": [
+      "Pain is crushing, squeezing, or spreads to arm, jaw, back, or neck.",
+      "There is shortness of breath, sweating, nausea, or feeling like you might faint.",
+      "Pain lasts more than 10–15 minutes or keeps coming back.",
+      "You have a history of heart disease, high BP, diabetes, or high cholesterol."
+    ],
+    "specialist": "Emergency department or cardiologist",
+    "disclaimer": "Treat any worrying chest pain as an emergency. Call local emergency services (such as 112 in India) or go to the nearest hospital immediately."
+  },
+  "stomach_pain": {
+    "keywords": ["stomach pain", "abdominal pain", "gas", "acidity", "cramps"],
+    "problem": "Stomach or Abdominal Pain",
+    "severity": "Many causes are mild (gas, acidity), but some can be serious like appendicitis or gallbladder problems.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Avoid heavy, oily, or spicy food until the pain settles.",
+      "Drink small sips of water frequently; avoid carbonated drinks and alcohol.",
+      "Use a warm water bag on the abdomen for gentle relief, if it feels comfortable.",
+      "Note what makes the pain better or worse (food, movement, lying down)."
+    ],
+    "whenToSeekHelp": [
+      "Severe pain, pain in the lower right side, or pain that keeps increasing.",
+      "Persistent vomiting, blood in vomit or stool, or black/tarry stool.",
+      "High fever, yellow eyes, difficulty passing urine, or bloating with no gas passing.",
+      "Pain after an injury, fall, or during pregnancy."
+    ],
+    "specialist": "General physician, gastroenterologist, or emergency doctor",
+    "disclaimer": "Do not ignore strong or persistent abdominal pain. Get examined by a doctor to rule out serious conditions."
+  },
+  "breathing_difficulty": {
+    "keywords": ["breathless", "shortness of breath", "difficulty breathing", "wheezing", "asthma"],
+    "problem": "Breathing Difficulty or Shortness of Breath",
+    "severity": "Breathing trouble can be dangerous and must be taken seriously.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Sit upright; do not lie flat. Support your back with pillows or a wall.",
+      "Loosen tight clothing around neck and chest area.",
+      "Use your prescribed inhaler or nebuliser if you are an asthma/COPD patient, as previously advised by your doctor.",
+      "Try to stay calm and breathe slowly in through the nose and out through the mouth."
+    ],
+    "whenToSeekHelp": [
+      "Breathlessness comes suddenly, is severe, or associated with chest pain.",
+      "Lips or face look blue, or you cannot speak full sentences.",
+      "You hear a loud wheeze, or inhalers are not giving relief.",
+      "There is high fever, confusion, or you feel you may faint."
+    ],
+    "specialist": "Emergency department, pulmonologist, or cardiologist",
+    "disclaimer": "Any significant breathing problem is an emergency. Seek urgent medical help or call local emergency services immediately."
+  },
+  "minor_injury": {
+    "keywords": ["small cut", "minor injury", "scratch", "small wound", "bruise"],
+    "problem": "Minor Cut, Scratch, or Bruise",
+    "severity": "Most small cuts and bruises are minor and can be managed at home with basic first-aid.",
+    "severityLevel": "mild",
+    "immediateSteps": [
+      "Wash your hands first, then gently clean the area with clean water.",
+      "For cuts, apply gentle pressure with a clean cloth or gauze to stop bleeding.",
+      "Rinse with mild soap around (not deep inside) the wound and pat dry.",
+      "Apply an antiseptic solution or cream if available and keep the area clean and dry.",
+      "For bruises, you may apply a cold pack wrapped in cloth for 10–15 minutes."
+    ],
+    "whenToSeekHelp": [
+      "Wound is deep, very dirty, or edges are far apart.",
+      "Bleeding does not stop after 10–15 minutes of pressure.",
+      "There is loss of movement or sensation around the injured area.",
+      "You have not had a tetanus shot in the last 5–10 years or are unsure."
+    ],
+    "specialist": "General physician or emergency doctor for larger wounds",
+    "disclaimer": "Basic first-aid is helpful, but see a doctor if you are unsure about the depth, cleanliness, or need for stitches or tetanus protection."
+  },
+  "diarrhea_dehydration_child": {
+    "keywords": ["loose motion", "diarrhea", "watery stool", "child dehydration", "vomiting child"],
+    "problem": "Child with Diarrhea and Risk of Dehydration",
+    "severity": "Common in rural areas due to infections or unsafe water and can become dangerous if dehydration develops.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "Give ORS (oral rehydration solution) in small sips frequently; continue breastfeeding if the child is an infant.",
+      "Avoid giving only plain water, fizzy drinks, or very sweet juices as the main fluid.",
+      "Offer light, soft foods like khichdi, dal-rice, or banana if the child is willing to eat.",
+      "Keep the child in a cool, shaded place and watch urine output and activity level."
+    ],
+    "whenToSeekHelp": [
+      "Child passes very frequent watery stools or vomits everything.",
+      "There is sunken eyes, very dry mouth, no tears while crying, or no urine for 6 hours or more.",
+      "Child is very sleepy, difficult to wake, or extremely irritable.",
+      "There is blood in stool, high fever, or the child is younger than 6 months."
+    ],
+    "specialist": "Pediatrician or nearest child health centre",
+    "disclaimer": "Severe dehydration in children is an emergency. Reach the nearest hospital or health centre as soon as possible."
+  },
+  "high_fever_chills": {
+    "keywords": ["high fever", "chills", "shivering", "malaria", "dengue"],
+    "problem": "High Fever with Chills",
+    "severity": "In rural and tropical regions this can be due to malaria, dengue, or other serious infections.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "Check temperature if a thermometer is available and note the readings.",
+      "Use light clothing and sponge the body with lukewarm water to bring down fever.",
+      "Encourage regular intake of water, ORS, or clear soups to prevent dehydration.",
+      "Avoid self-starting antibiotics without doctor advice."
+    ],
+    "whenToSeekHelp": [
+      "Fever persists beyond 2–3 days or is very high (above 102°F / 38.9°C).",
+      "There is severe headache, vomiting, abdominal pain, rash, or bleeding from gums or nose.",
+      "The person becomes drowsy, confused, or has seizures.",
+      "There is a known outbreak of malaria or dengue in the village."
+    ],
+    "specialist": "General physician or infectious disease specialist",
+    "disclaimer": "Fever with chills can indicate serious infections. Early testing and treatment greatly improve outcomes."
+  },
+  "snake_bite": {
+    "keywords": ["snake bite", "cobra", "viper", "krait", "fang marks"],
+    "problem": "Suspected Snake Bite",
+    "severity": "Snake bites, especially from venomous species, are life-threatening rural emergencies.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Keep the person calm and lying down; keep the bitten limb below heart level and as still as possible.",
+      "Remove tight items like rings, bangles, or shoes near the bite due to swelling.",
+      "Do not cut, suck, burn, or apply chemicals to the wound and do not give alcohol.",
+      "If possible, remember the snake’s colour and pattern but do not try to catch or kill it."
+    ],
+    "whenToSeekHelp": [
+      "Any suspected snake bite should be treated as an emergency.",
+      "There is swelling around the bite, difficulty breathing, drooping eyelids, or weakness.",
+      "There is bleeding from gums, vomiting of blood, or passing black stool.",
+      "The person becomes drowsy, confused, or collapses."
+    ],
+    "specialist": "Emergency department with anti-snake venom facilities",
+    "disclaimer": "Transport the patient urgently to the nearest hospital with anti-snake venom. Do not rely only on home remedies or traditional methods."
+  },
+  "dog_bite_rabies_risk": {
+    "keywords": ["dog bite", "animal bite", "rabies", "stray dog", "monkey bite"],
+    "problem": "Dog or Animal Bite (Rabies Risk)",
+    "severity": "Rabies is almost always fatal but completely preventable with proper vaccination after exposure.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "Immediately wash the wound thoroughly with running water and soap for at least 10–15 minutes.",
+      "Do not tightly bandage; allow it to bleed slightly and keep it clean.",
+      "Avoid applying chilli, lime, soil, or other irritants on the wound.",
+      "Note the animal’s behaviour and if possible, whether it is vaccinated or can be observed."
+    ],
+    "whenToSeekHelp": [
+      "Any bite or scratch that breaks the skin from a dog, cat, monkey, or wild animal.",
+      "Bites on the face, neck, or multiple deep wounds.",
+      "The animal is unknown, stray, unvaccinated, or acting strangely.",
+      "You are unsure about your last rabies vaccination or tetanus shot."
+    ],
+    "specialist": "Rabies vaccination centre or hospital emergency department",
+    "disclaimer": "Post-exposure rabies vaccination and sometimes immunoglobulin are urgent. Visit a hospital or anti-rabies centre as soon as possible."
+  },
+  "scorpion_insect_sting": {
+    "keywords": ["scorpion sting", "bee sting", "wasp sting", "insect bite", "local swelling"],
+    "problem": "Scorpion or Insect Sting",
+    "severity": "Many stings are mild but some scorpion stings or multiple stings can be dangerous.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Move the person to a safe area away from the insect or scorpion.",
+      "Wash the site with soap and water and remove any visible stinger by scraping gently.",
+      "Apply a cold pack wrapped in cloth for 10–15 minutes to reduce pain and swelling.",
+      "Keep the affected limb elevated and avoid tight bands around it."
+    ],
+    "whenToSeekHelp": [
+      "There is severe pain, spreading redness, or swelling involving a large area.",
+      "The person develops difficulty breathing, wheezing, swelling of face or lips, or feels faint.",
+      "Sting is on the face, tongue, or inside the mouth.",
+      "The person is a child, elderly, or has heart/lung disease."
+    ],
+    "specialist": "Emergency doctor or general physician",
+    "disclaimer": "Allergic reactions and some scorpion stings can be life-threatening. Do not delay seeking medical care if serious symptoms appear."
+  },
+  "heat_stroke_exhaustion": {
+    "keywords": ["heat stroke", "sunstroke", "too hot", "heat exhaustion", "working in sun"],
+    "problem": "Heat Exhaustion or Heat Stroke",
+    "severity": "Common in rural outdoor workers during summer and can quickly become life-threatening.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Move the person to a cool, shaded or indoor area immediately.",
+      "Remove excess clothing and cool the body with wet cloths, cool water spray, or a fan.",
+      "Give cool water or ORS to sip slowly if the person is fully conscious.",
+      "Lay the person on their side if drowsy to prevent choking on vomit."
+    ],
+    "whenToSeekHelp": [
+      "Body feels extremely hot, the person is confused, drowsy, or unconscious.",
+      "There is no sweating despite the heat or there are seizures.",
+      "Vomiting repeatedly or unable to drink fluids.",
+      "Symptoms started after long work in fields, construction, or travel in heat."
+    ],
+    "specialist": "Emergency department or general physician",
+    "disclaimer": "Heat stroke is a medical emergency: rapid cooling and hospital treatment are essential to prevent organ damage."
+  },
+  "hypothermia_cold_exposure": {
+    "keywords": ["very cold", "shivering", "cold exposure", "rain soaked", "hypothermia"],
+    "problem": "Exposure to Cold and Possible Hypothermia",
+    "severity": "Prolonged exposure to cold or rain can lead to dangerously low body temperature.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "Move the person to a warm, dry shelter and remove wet clothing.",
+      "Wrap in dry blankets or warm clothes, including head, hands, and feet.",
+      "Offer warm (not very hot) sweet drinks if the person is awake and able to swallow.",
+      "Warm the body gradually; avoid direct high heat like very hot water or fire close to the skin."
+    ],
+    "whenToSeekHelp": [
+      "Person is very drowsy, confused, or not responding normally.",
+      "Shivering stops suddenly and the person feels very cold to touch.",
+      "There are breathing difficulties, slow pulse, or stiff muscles.",
+      "Person is very young, very old, or has long exposure in rain, flood, or cold."
+    ],
+    "specialist": "Emergency department",
+    "disclaimer": "Severe hypothermia is life-threatening. Seek hospital care urgently while continuing gentle rewarming."
+  },
+  "pregnancy_bleeding": {
+    "keywords": ["pregnancy bleeding", "vaginal bleeding", "spotting pregnancy", "pregnant pain"],
+    "problem": "Bleeding During Pregnancy",
+    "severity": "Any bleeding in pregnancy can be serious for the mother or baby.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Make the pregnant woman lie on her side and keep her as calm and still as possible.",
+      "Do not insert anything into the vagina and do not attempt to check internally.",
+      "Note the amount of bleeding (pads soaked, clots) and any associated pain or dizziness.",
+      "Ensure someone reliable is ready to accompany her to a hospital."
+    ],
+    "whenToSeekHelp": [
+      "Any visible bleeding in pregnancy, even if small.",
+      "Severe abdominal pain, cramps, passing clots, or fluid leakage.",
+      "Feeling faint, breathless, or severe weakness.",
+      "No fetal movements felt after 7 months of pregnancy when previously active."
+    ],
+    "specialist": "Obstetrician or nearest maternity hospital",
+    "disclaimer": "Bleeding during pregnancy must be evaluated urgently by a specialist to protect both mother and baby."
+  },
+  "labour_emergency": {
+    "keywords": ["labour pains", "water broke", "delivery starting", "pregnant contractions", "rural home delivery"],
+    "problem": "Onset of Labour or Delivery at Home",
+    "severity": "Most labours are natural but complications can arise, especially without skilled help.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "Keep the woman in a clean, private place with support persons she trusts.",
+      "Encourage deep breathing and comfortable positions; do not panic.",
+      "If waters break, note the time and colour of fluid (clear, green, or blood-stained).",
+      "Arrange immediate transport to the nearest facility with delivery services."
+    ],
+    "whenToSeekHelp": [
+      "Strong contractions less than 5 minutes apart for more than an hour.",
+      "Heavy bleeding, severe pain, or the baby’s parts (hand/foot/cord) coming out first.",
+      "Foul-smelling discharge, high fever, or seizure in pregnancy.",
+      "No progress in labour for many hours or previous history of difficult delivery."
+    ],
+    "specialist": "Obstetrician or skilled birth attendant at a maternity hospital",
+    "disclaimer": "Institutional delivery is safest. Seek skilled help early to prevent complications for mother and baby."
+  },
+  "pesticide_poisoning": {
+    "keywords": ["pesticide", "insecticide", "poison", "organophosphate", "suicide attempt"],
+    "problem": "Suspected Pesticide or Poison Ingestion",
+    "severity": "Common rural emergency with very high risk of death if not treated quickly.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Move the person away from the source and into fresh air; avoid breathing fumes yourself.",
+      "Do not make the person vomit unless specifically instructed by a doctor.",
+      "Remove contaminated clothing and wash exposed skin with plenty of water.",
+      "If safe, carry the pesticide container or photo of its label to the hospital."
+    ],
+    "whenToSeekHelp": [
+      "Any suspected swallowing, inhalation, or skin exposure to pesticides or unknown chemicals.",
+      "There is vomiting, stomach pain, excessive salivation, sweating, or difficulty breathing.",
+      "The person becomes drowsy, confused, has fits, or is unconscious.",
+      "Exposure was intentional (self-harm) regardless of amount."
+    ],
+    "specialist": "Emergency department with poison management facilities",
+    "disclaimer": "Pesticide poisoning is a critical emergency. Take the patient to the nearest hospital immediately; do not delay for home remedies."
+  },
+  "seizure_fits": {
+    "keywords": ["fits", "seizure", "convulsion", "epilepsy attack", "jerking movements"],
+    "problem": "Seizure or Fits",
+    "severity": "Seizures can result from epilepsy, fever, infections, or head injury and may be life-threatening.",
+    "severityLevel": "emergency",
+    "immediateSteps": [
+      "Lay the person on their side on the floor, away from sharp or hard objects.",
+      "Do not put anything in the mouth and do not try to hold the tongue.",
+      "Loosen tight clothing around the neck and keep the airway clear.",
+      "Time how long the seizure lasts and observe the body movements."
+    ],
+    "whenToSeekHelp": [
+      "Seizure lasts more than 3–5 minutes or repeats without full recovery in between.",
+      "This is the first-ever seizure or it follows a head injury or poisoning.",
+      "Person does not wake up or breathe normally after the jerking stops.",
+      "Seizure occurs in a pregnant woman, infant, or person with known serious illness."
+    ],
+    "specialist": "Emergency doctor or neurologist",
+    "disclaimer": "Prompt medical evaluation after a seizure is important to find and treat the underlying cause."
+  },
+  "head_injury_fall": {
+    "keywords": ["head injury", "fell from height", "hit head", "unconscious after fall", "road accident"],
+    "problem": "Head Injury After Fall or Accident",
+    "severity": "Head injuries can cause internal bleeding even if the outside wound looks small.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "If the person is unconscious, check breathing and place them on their side if breathing is normal.",
+      "Do not move the neck unnecessarily; support the head and neck in a straight line.",
+      "Control any external bleeding with gentle pressure using a clean cloth.",
+      "Do not give food, drink, or medicines until fully alert and checked by a doctor."
+    ],
+    "whenToSeekHelp": [
+      "Loss of consciousness, confusion, repeated vomiting, or seizures.",
+      "Bleeding from ears or nose or clear watery fluid leaking.",
+      "Severe headache, unequal pupils, or weakness of arms/legs.",
+      "Fall from height, road traffic accident, or injury with heavy object."
+    ],
+    "specialist": "Emergency department, neurosurgeon if needed",
+    "disclaimer": "Serious head injuries may not show immediately. Always get evaluated after a significant fall or blow to the head."
+  },
+  "fracture_suspected": {
+    "keywords": ["broken bone", "fracture", "cannot move limb", "bone out of place", "leg injury"],
+    "problem": "Suspected Fracture or Broken Bone",
+    "severity": "Fractures need proper alignment and immobilisation to heal correctly.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Support and immobilise the injured limb using a splint (wooden stick, cardboard) padded with cloth.",
+      "Do not try to straighten a deformed limb forcefully.",
+      "Apply a cold pack wrapped in cloth to reduce pain and swelling.",
+      "Keep the person comfortable and avoid walking on an injured leg."
+    ],
+    "whenToSeekHelp": [
+      "Visible deformity, bone protruding out, or inability to move or bear weight.",
+      "Severe pain, swelling, or abnormal movement at the injury site.",
+      "Numbness, tingling, or pale, cold fingers or toes beyond the injury.",
+      "Fracture suspected in children, elderly, or after major trauma."
+    ],
+    "specialist": "Orthopaedic surgeon or trauma centre",
+    "disclaimer": "Fractures should be X-rayed and treated by a doctor to prevent long-term disability."
+  },
+  "burn_injury": {
+    "keywords": ["burn", "hot water burn", "flame burn", "electric burn", "scald"],
+    "problem": "Burn from Heat, Flame, or Electricity",
+    "severity": "Burns can lead to infection, fluid loss, and scarring, especially in children.",
+    "severityLevel": "high",
+    "immediateSteps": [
+      "Immediately cool the burn under cool running water for at least 15–20 minutes.",
+      "Remove rings, bangles, or tight clothing near the burnt area before swelling starts.",
+      "Do not apply toothpaste, ink, mud, or butter on the burn.",
+      "Cover the area loosely with a clean, non-fluffy cloth or sterile dressing."
+    ],
+    "whenToSeekHelp": [
+      "Burns on face, hands, feet, genitals, or major joints.",
+      "Large burns, deep burns, or burns caused by electricity or chemicals.",
+      "Burns in children, elderly, or pregnant women.",
+      "Signs of infection later like pus, foul smell, or fever."
+    ],
+    "specialist": "Emergency department or burn specialist",
+    "disclaimer": "Serious burns require early hospital treatment to reduce complications and scarring."
+  },
+  "eye_foreign_body": {
+    "keywords": ["something in eye", "dust in eye", "eye injury", "foreign body eye", "welding spark"],
+    "problem": "Foreign Body or Injury in the Eye",
+    "severity": "Eye injuries can threaten sight if not handled correctly.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Do not rub the eye; ask the person to blink several times.",
+      "Rinse the eye gently with clean water or saline if available.",
+      "If an object is stuck on the surface, do not try to remove it with fingers or tools.",
+      "Cover the injured eye lightly with a clean cloth and keep both eyes as still as possible."
+    ],
+    "whenToSeekHelp": [
+      "Persistent pain, redness, or sensation of something in the eye.",
+      "Sudden loss of vision, double vision, or bleeding from the eye.",
+      "Injury from metal, glass, chemical, or high-speed particles (like grinding/welding).",
+      "Any injury in a child or if vision seems reduced."
+    ],
+    "specialist": "Eye specialist (ophthalmologist) or emergency department",
+    "disclaimer": "Delicate eye structures heal poorly from rough handling. Always let a specialist examine significant eye injuries."
+  },
+  "ear_infection_pain": {
+    "keywords": ["ear pain", "ear discharge", "ear infection", "child earache", "pus from ear"],
+    "problem": "Ear Pain or Suspected Ear Infection",
+    "severity": "Ear infections are common in children and can affect hearing if untreated.",
+    "severityLevel": "mild",
+    "immediateSteps": [
+      "Keep the ear dry; do not pour oil, water, or herbal liquids inside.",
+      "Give age-appropriate pain relief only if previously advised by a doctor.",
+      "Make the child rest with the painful ear slightly elevated.",
+      "Note any fever, discharge, or recent cold/cough."
+    ],
+    "whenToSeekHelp": [
+      "Severe ear pain, high fever, or swelling behind the ear.",
+      "Pus or blood coming out from the ear canal.",
+      "Child seems not to hear sounds properly or is very irritable.",
+      "Ear pain after injury or insertion of foreign objects."
+    ],
+    "specialist": "ENT specialist or general physician",
+    "disclaimer": "Avoid inserting objects or home remedies into the ear. Medical assessment helps prevent long-term hearing problems."
+  },
+  "tooth_dental_pain": {
+    "keywords": ["tooth pain", "dental pain", "toothache", "swollen gum", "broken tooth"],
+    "problem": "Severe Toothache or Dental Swelling",
+    "severity": "Dental infections can spread to jaw or face if ignored.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Rinse the mouth gently with warm salt water.",
+      "Avoid very hot, cold, or sweet foods on the painful side.",
+      "Use pain relief only as previously recommended by a doctor or dentist.",
+      "Keep the head elevated when lying down to reduce throbbing."
+    ],
+    "whenToSeekHelp": [
+      "Persistent toothache for more than 1–2 days.",
+      "Swelling of face, jaw, or difficulty opening the mouth.",
+      "Fever, foul taste, or pus discharge in the mouth.",
+      "Difficulty swallowing or breathing."
+    ],
+    "specialist": "Dentist or oral surgeon",
+    "disclaimer": "Painkillers give temporary relief only. Dental problems need proper treatment like filling or extraction."
+  },
+  "urine_burning_uti": {
+    "keywords": ["burning urine", "pain passing urine", "urinary infection", "frequent urination", "lower abdominal pain"],
+    "problem": "Burning While Passing Urine (Possible UTI)",
+    "severity": "Urinary infections are common, especially in women, and can spread to the kidneys if untreated.",
+    "severityLevel": "moderate",
+    "immediateSteps": [
+      "Drink extra clean water throughout the day unless your doctor has restricted fluids.",
+      "Do not hold urine for long periods; pass urine whenever you feel the urge.",
+      "Maintain good personal hygiene and wipe from front to back after using the toilet.",
+      "Avoid very spicy foods and very sugary drinks temporarily."
+    ],
+    "whenToSeekHelp": [
+      "Burning or pain persists for more than 1–2 days.",
+      "There is fever, back pain, nausea, or vomiting.",
+      "You notice blood in urine or foul smell.",
+      "You are pregnant, diabetic, or have kidney disease."
+    ],
+    "specialist": "General physician, gynaecologist, or urologist",
+    "disclaimer": "Urinary infections usually need antibiotics chosen by a doctor. Do not self-medicate repeatedly without proper tests."
+  },
+  "anemia_weakness": {
+    "keywords": ["weakness", "tired all the time", "pale", "giddiness", "low blood"],
+    "problem": "General Weakness and Possible Anaemia",
+    "severity": "Very common in rural populations due to poor diet, blood loss, or chronic illness.",
+    "severityLevel": "mild",
+    "immediateSteps": [
+      "Rest adequately and avoid working continuously in heat or heavy labour.",
+      "Take iron-rich foods if available such as green leafy vegetables, jaggery, pulses, eggs, and meat.",
+      "Drink plenty of clean water and avoid skipping meals.",
+      "If you already have iron or vitamin tablets prescribed, continue them regularly."
+    ],
+    "whenToSeekHelp": [
+      "Extreme tiredness, breathlessness on small activity, or chest discomfort.",
+      "Very pale tongue, palms, or inside of eyelids.",
+      "History of heavy menstrual bleeding, blood in stool, or chronic illness like kidney or heart disease.",
+      "Dizziness, frequent fainting, or very fast heartbeat."
+    ],
+    "specialist": "General physician or haematologist",
+    "disclaimer": "Blood tests are needed to confirm anaemia and its cause. Long-term weakness should not be ignored."
+  },
+  "child_fever_simple": {
+    "keywords": ["child fever", "baby fever", "toddler fever", "mild fever child", "viral fever child"],
+    "problem": "Fever in a Child (Likely Simple Viral)",
+    "severity": "Most childhood fevers are due to viral infections and settle in a few days but must be watched closely.",
+    "severityLevel": "mild",
+    "immediateSteps": [
+      "Dress the child in light clothing and keep the room comfortably cool.",
+      "Give plenty of fluids like water, ORS, breast milk, or light soups.",
+      "Use fever medicine (like paracetamol) only in correct dose as per previous doctor advice.",
+      "Monitor temperature and observe for rashes, breathing difficulty, or unusual behaviour."
+    ],
+    "whenToSeekHelp": [
+      "Fever in a baby younger than 3 months.",
+      "Fever more than 101°F (38.3°C) lasting longer than 2–3 days.",
+      "Child is very irritable, difficult to wake, has a stiff neck, or seizures.",
+      "There is persistent vomiting, rash, or poor feeding."
+    ],
+    "specialist": "Pediatrician or child health clinic",
+    "disclaimer": "Though many fevers are mild, infants and small children can deteriorate quickly. When in doubt, consult a doctor."
+  }
+}
+
