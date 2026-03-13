@@ -1,217 +1,194 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  try {
-    const { symptoms, userId, language } = await request.json();
+export async function POST(req: NextRequest) {
+  const { symptoms, language } = await req.json();
+  const isHindi = language === "hi";
 
-    if (!symptoms) {
-      return NextResponse.json(
-        { error: 'Symptoms are required' },
-        { status: 400 }
+  // ── Fallbacks ────────────────────────────────────────────────────────────────
+  const fallback = {
+    problem: isHindi ? "सेवा अनुपलब्ध" : "Service Unavailable",
+    severity: isHindi
+      ? "क्षमा करें, मैं केवल स्वास्थ्य संबंधी प्रश्नों में सहायता कर सकता हूं।"
+      : "Sorry, I can only help with health-related questions.",
+    severityLevel: "info",
+    possibleCauses: [],
+    possibleConditions: [],
+    immediateSteps: [],
+    recommendations: [],
+    whenToSeekHelp: [],
+    specialist: isHindi ? "सामान्य चिकित्सक" : "General Physician",
+    doctorDirection: "",
+    disclaimer: isHindi
+      ? "यह जानकारी केवल सामान्य मार्गदर्शन के लिए है।"
+      : "This is for informational purposes only.",
+  };
+
+  // ── System prompt ────────────────────────────────────────────────────────────
+  const systemPrompt = isHindi
+    ? `आप SehatBeat AI हैं — एक विशेषज्ञ, सहानुभूतिपूर्ण भारतीय चिकित्सा सहायक।
+नीचे दिए गए JSON प्रारूप में ही जवाब दें। JSON के बाहर कुछ भी मत लिखें।
+यदि उपयोगकर्ता ने गलत वर्तनी (typo) की है, तो उसे सुधार कर समझें।
+
+JSON schema:
+{
+  "problem": "संभावित स्वास्थ्य समस्या",
+  "severity": "गंभीरता का विस्तृत विवरण",
+  "severityLevel": "emergency | high | moderate | mild | info",
+  "possibleCauses": ["कारण 1", "कारण 2"],
+  "possibleConditions": ["संभावित बीमारी 1", "संभावित बीमारी 2"],
+  "immediateSteps": ["तुरंत करें 1", "तुरंत करें 2"],
+  "recommendations": ["सुझाव 1", "सुझाव 2"],
+  "whenToSeekHelp": ["यह होने पर डॉक्टर के पास जाएं"],
+  "specialist": "किस विशेषज्ञ से मिलें",
+  "doctorDirection": "डॉक्टर के पास कब और क्यों जाएं, कौन से टेस्ट करवाएं",
+  "disclaimer": "चिकित्सा अस्वीकरण"
+}
+
+severityLevel नियम:
+- emergency: सीने में दर्द, सांस न आना, बेहोशी, लकवा → doctorDirection में 112 और तुरंत अस्पताल लिखें
+- high: तेज बुखार, गंभीर दर्द → 24 घंटे में डॉक्टर
+- moderate: 2+ दिन से लक्षण → 3 दिन में डॉक्टर
+- mild: हल्के लक्षण → घरेलू उपाय पर्याप्त`
+
+    : `You are SehatBeat AI — an expert, empathetic Indian medical assistant.
+Respond ONLY in valid JSON matching the schema below. Nothing outside the JSON.
+If the user made a typo or spelling mistake in symptoms, intelligently correct and interpret it.
+Provide thorough, detailed medical analysis in English.
+
+JSON schema (all fields required):
+{
+  "problem": "Name of the likely health condition",
+  "severity": "Detailed severity description with clinical context",
+  "severityLevel": "emergency | high | moderate | mild | info",
+  "possibleCauses": ["Cause 1", "Cause 2", "Cause 3"],
+  "possibleConditions": ["Possible condition 1", "Possible condition 2"],
+  "immediateSteps": ["Step 1", "Step 2", "Step 3"],
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "whenToSeekHelp": ["Warning sign 1", "Warning sign 2"],
+  "specialist": "Specific type of specialist (e.g. Cardiologist, not just Doctor)",
+  "doctorDirection": "When and why to see a doctor, which tests to ask for (e.g. CBC, ECG, X-ray), what to tell the doctor",
+  "disclaimer": "Medical disclaimer"
+}
+
+severityLevel rules:
+- emergency: chest pain, breathing difficulty, unconsciousness, stroke, severe bleeding → doctorDirection MUST say call 112 and go to nearest hospital NOW
+- high: fever >103F, severe pain, persistent vomiting → see doctor within 24 hours
+- moderate: symptoms 2+ days, worsening → see doctor within 3 days
+- mild: minor self-limiting symptoms → home remedies sufficient
+
+For doctorDirection always include: urgency timeline, specific tests to request, what to describe to doctor.
+For specialist be specific: Cardiologist, Pulmonologist, Gastroenterologist, ENT, Dermatologist, General Physician etc.
+Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache", "stomic" as "stomach" etc.`;
+
+  // ── Helper: parse AI JSON response ──────────────────────────────────────────
+  function parseAIResponse(raw: string) {
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    const parsed = JSON.parse(cleaned);
+    // Ensure recommendations mirrors immediateSteps for frontend compatibility
+    if (!parsed.recommendations && parsed.immediateSteps) {
+      parsed.recommendations = parsed.immediateSteps;
+    }
+    if (!parsed.possibleConditions) parsed.possibleConditions = [];
+    if (!parsed.doctorDirection) parsed.doctorDirection = "";
+    return parsed;
+  }
+
+  // ── Try Gemini first ─────────────────────────────────────────────────────────
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+
+  if (GEMINI_KEY) {
+    try {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `${systemPrompt}\n\nPatient reports: ${symptoms}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 1024,
+            },
+          }),
+        }
       );
-    }
 
-    const lang: "en" | "hi" =
-      language === "hi" || language === "hi-IN" ? "hi" : "en";
+      if (geminiRes.ok) {
+        const geminiData = await geminiRes.json();
+        const raw: string =
+          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
-    // Check if input is health-related
-    const healthKeywords = [
-      'pain', 'ache', 'hurt', 'sore', 'fever', 'cough', 'cold', 'flu', 'headache', 'migraine',
-      'stomach', 'nausea', 'vomiting', 'diarrhea', 'constipation', 'indigestion', 'heartburn',
-      'rash', 'itch', 'skin', 'burn', 'cut', 'bruise', 'swelling', 'inflammation',
-      'dizzy', 'dizziness', 'faint', 'weakness', 'fatigue', 'tired', 'exhausted',
-      'breathing', 'shortness of breath', 'chest pain', 'heart', 'blood pressure',
-      'joint', 'muscle', 'back', 'neck', 'shoulder', 'knee', 'hip', 'arm', 'leg',
-      'vision', 'eye', 'ear', 'nose', 'throat', 'mouth', 'tooth', 'dental',
-      'cancer', 'tumor', 'lump', 'bump', 'growth', 'bleeding', 'infection',
-      'allergy', 'asthma', 'diabetes', 'hypertension', 'arthritis', 'depression', 'anxiety'
-    ];
-    
-    const lowerSymptoms = symptoms.toLowerCase();
-    const isHealthRelated = healthKeywords.some(keyword => 
-      lowerSymptoms.includes(keyword)
-    );
-    
-    if (!isHealthRelated) {
-      if (lang === "hi") {
-        return NextResponse.json({
-          analysis: `मैं एक विशेष स्वास्थ्य और मेडिकल लक्षण विश्लेषक हूँ। मैं आपको केवल स्वास्थ्य से जुड़े विषयों जैसे लक्षण, बीमारियाँ, चोटें और सामान्य वेलनेस में मदद कर सकता/सकती हूँ।
-
-आपने यह पूछा है: "${symptoms}"
-
-कृपया अपने स्वास्थ्य लक्षणों, मेडिकल चिंताओं या वेलनेस से जुड़े किसी भी प्रश्न को विस्तार से लिखें। मैं आपको स्वास्थ्य संबंधी मार्गदर्शन और सुझाव दूँगा/दूँगी।`,
-          severity: "लागू नहीं",
-          recommendations: [
-            "स्वास्थ्य लक्षणों या मेडिकल चिंताओं का विवरण लिखें",
-            "किसी विशेष बीमारी या समस्या के बारे में पूछें",
-            "वेलनेस और प्रिवेंशन के बारे में प्रश्न पूछें",
-            "दर्द या चोट के लिए मार्गदर्शन लें",
-          ],
-        });
-      }
-
-      return NextResponse.json({
-        analysis: `I'm a specialized health and medical symptom analyzer. I can help you with health-related topics like symptoms, medical conditions, injuries, and general wellness. 
-
-What you asked about: "${symptoms}"
-
-Please describe any health symptoms, medical concerns, or wellness questions you have. I'm here to provide health-related guidance and recommendations.`,
-        severity: "Not Applicable",
-        recommendations: [
-          "Describe health symptoms or medical concerns",
-          "Ask about specific health conditions",
-          "Inquire about wellness and prevention",
-          "Seek guidance for injuries or pain"
-        ]
-      });
-    }
-
-    // Perplexity AI API integration
-    const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
-    
-    console.log('Environment check:', {
-      hasApiKey: !!PERPLEXITY_API_KEY,
-      apiKeyLength: PERPLEXITY_API_KEY?.length || 0,
-      apiKeyStart: PERPLEXITY_API_KEY?.substring(0, 10) || 'none'
-    });
-    
-    if (!PERPLEXITY_API_KEY) {
-      console.log('No API key found, using fallback response');
-      // Fallback response when API key is not available
-      return NextResponse.json({
-        analysis: `I've analyzed your symptoms: "${symptoms}". Here's what I found:`,
-        severity: "Moderate",
-        recommendations: [
-          "Rest and stay hydrated",
-          "Monitor your symptoms",
-          "Consider over-the-counter relief if appropriate",
-          "Consult a healthcare professional if symptoms persist or worsen",
-          "Keep a symptom diary to track patterns"
-        ]
-      });
-    }
-
-    // Call Perplexity AI API
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a medical AI assistant for patients in India. Analyze the user's symptoms and provide:
-1. A brief analysis of possible causes
-2. Severity level (Low/Moderate/High)
-3. 5-7 actionable recommendations
-4. When to seek medical attention
-
-The user has selected interface language: ${lang === "hi" ? "Hindi" : "English"}.
-- If Hindi is selected, respond fully in clear, simple Hindi that an Indian patient can easily understand.
-- If English is selected, respond in clear, simple English, but you may occasionally use common Indian medical terms.
-
-Keep responses concise, helpful, and always include a disclaimer about consulting healthcare professionals.`
-          },
-          {
-            role: 'user',
-            content: `Analyze these symptoms: ${symptoms}. Provide a structured response with analysis, severity, and recommendations, in the same language as the interface setting (${lang === "hi" ? "Hindi" : "English"}).`
+        if (raw) {
+          try {
+            const parsed = parseAIResponse(raw);
+            return NextResponse.json(parsed);
+          } catch {
+            // JSON parse failed — fall through to Perplexity
           }
-        ],
-        max_tokens: 500,
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || '';
-    
-    console.log('Perplexity AI response received:', {
-      status: response.status,
-      responseLength: aiResponse.length,
-      hasContent: !!aiResponse
-    });
-
-    // Parse the AI response to extract structured information
-    const analysis = aiResponse;
-    const severity = extractSeverity(aiResponse);
-    const recommendations = extractRecommendations(aiResponse);
-
-    return NextResponse.json({
-      analysis,
-      severity,
-      recommendations,
-    });
-
-  } catch (error) {
-    console.error('Error analyzing symptoms:', error);
-    
-    // Return fallback response on error
-    return NextResponse.json({
-      analysis: "I'm having trouble connecting to the AI service right now. Here's some general advice:",
-      severity: "Moderate",
-      recommendations: [
-        "Rest and stay hydrated",
-        "Monitor your symptoms closely",
-        "Consider over-the-counter relief if appropriate",
-        "Consult a healthcare professional if symptoms persist",
-        "Keep a symptom diary to track patterns"
-      ]
-    });
-  }
-}
-
-function extractSeverity(text: string): string {
-  const severityPatterns = [
-    { pattern: /severity[:\s]+(low|moderate|high)/i, default: 'Moderate' },
-    { pattern: /(low|moderate|high)\s+severity/i, default: 'Moderate' },
-    { pattern: /(low|moderate|high)/i, default: 'Moderate' }
-  ];
-
-  for (const { pattern, default: defaultValue } of severityPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[1] || defaultValue;
-    }
-  }
-  
-  return 'Moderate';
-}
-
-function extractRecommendations(text: string): string[] {
-  const recommendationPatterns = [
-    /recommendations?[:\s]+(.*?)(?=\n|$)/i,
-    /suggestions?[:\s]+(.*?)(?=\n|$)/i,
-    /advice[:\s]+(.*?)(?=\n|$)/i
-  ];
-
-  for (const pattern of recommendationPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const recommendations = match[1]
-        .split(/[•\-\*]/)
-        .map(rec => rec.trim())
-        .filter(rec => rec.length > 10)
-        .slice(0, 7);
-      
-      if (recommendations.length > 0) {
-        return recommendations;
+        }
       }
+    } catch {
+      // Gemini network error — fall through to Perplexity
     }
   }
 
-  // Fallback recommendations
-  return [
-    "Rest and stay hydrated",
-    "Monitor your symptoms closely",
-    "Consider over-the-counter relief if appropriate",
-    "Consult a healthcare professional if symptoms persist",
-    "Keep a symptom diary to track patterns"
-  ];
+  // ── Fallback: Perplexity ─────────────────────────────────────────────────────
+  const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
+
+  if (PERPLEXITY_KEY) {
+    try {
+      const response = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PERPLEXITY_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-sonar-small-128k-online",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: symptoms },
+          ],
+          max_tokens: 1024,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const raw: string = data.choices?.[0]?.message?.content ?? "";
+
+        if (raw) {
+          try {
+            const parsed = parseAIResponse(raw);
+            return NextResponse.json(parsed);
+          } catch {
+            // Not valid JSON — wrap plain text response
+            return NextResponse.json({
+              ...fallback,
+              problem: isHindi ? "लक्षण विश्लेषण" : "Symptom Analysis",
+              severity: raw,
+              severityLevel: "info",
+            });
+          }
+        }
+      }
+    } catch {
+      // Perplexity also failed
+    }
+  }
+
+  // ── Static fallback ──────────────────────────────────────────────────────────
+  return NextResponse.json(fallback);
 }

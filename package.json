@@ -5,5 +5,8 @@
     "convex": "^1.10.0",
     "openai": "^6.27.0",
     "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@types/dom-speech-recognition": "^0.0.7"
   }
 }

@@ -75,11 +75,24 @@ function getStoredLanguage(): AppLanguage {
   }
 }
 
+// ─── API call ──────────────────────────────────────────────────────────────────
+
 async function callNextSymptomAPI(
   message: string,
   language: AppLanguage = "en"
 ): Promise<StructuredResponse> {
-  const res = await fetch("/api/analyze-symptoms", {
+  // VITE_BACKEND_URL=http://localhost:3000 in frontend/.env
+  const backendBase =
+    typeof import.meta !== "undefined" &&
+    (import.meta as any).env?.VITE_BACKEND_URL
+      ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
+      : "";
+
+  const url = backendBase
+    ? `${backendBase}/api/analyze-symptoms`
+    : "/api/analyze-symptoms";
+
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ symptoms: message, language }),
@@ -91,28 +104,34 @@ async function callNextSymptomAPI(
   }
 
   const data: {
-    analysis: string;
-    severity: string;
-    severityLevel: string;
-    possibleConditions: string[];
-    recommendations: string[];
-    whenToSeekHelp: string[];
-    specialist: string;
-    doctorDirection: string;
-    disclaimer: string;
+    analysis?: string;
+    severity?: string;
+    severityLevel?: string;
+    possibleConditions?: string[];
+    recommendations?: string[];
+    immediateSteps?: string[];
+    whenToSeekHelp?: string[];
+    specialist?: string;
+    doctorDirection?: string;
+    doctorNote?: string;
+    disclaimer?: string;
+    // also accept top-level structured fields from Gemini response
+    problem?: string;
+    possibleCauses?: string[];
   } = await res.json();
 
   return {
-    problem: language === "hi" ? "लक्षण विश्लेषण" : "Symptom Analysis",
+    problem: data.problem || (language === "hi" ? "लक्षण विश्लेषण" : "Symptom Analysis"),
     severity: data.severity || "Overall severity could not be determined precisely.",
     severityLevel: mapSeverityLevel(data.severityLevel || data.severity),
-    possibleCauses: [],
+    possibleCauses: data.possibleCauses ?? [],
     possibleConditions: data.possibleConditions ?? [],
-    immediateSteps: data.recommendations ?? [],
+    immediateSteps: data.immediateSteps ?? data.recommendations ?? [],
     whenToSeekHelp: data.whenToSeekHelp ?? [],
     specialist: data.specialist || (language === "hi" ? "सामान्य चिकित्सक" : "Nearest doctor or health centre"),
-    doctorDirection: data.doctorDirection ?? "",
-    disclaimer: data.disclaimer ||
+    doctorDirection: data.doctorDirection ?? data.doctorNote ?? "",
+    disclaimer:
+      data.disclaimer ||
       "This AI-generated triage is informational only and must not replace an in-person consultation with a qualified healthcare professional.",
   };
 }
@@ -120,11 +139,11 @@ async function callNextSymptomAPI(
 // ─── Severity styles ────────────────────────────────────────────────────────────
 
 const SEV_CONFIG = {
-  emergency: { border: "border-red-500",    bg: "bg-red-50 dark:bg-red-950/30",       badge: "bg-red-100 text-red-800",      icon: AlertOctagon,  label: "🚨 EMERGENCY", color: "text-red-600"    },
+  emergency: { border: "border-red-500",    bg: "bg-red-50 dark:bg-red-950/30",       badge: "bg-red-100 text-red-800",       icon: AlertOctagon,  label: "🚨 EMERGENCY", color: "text-red-600"    },
   high:      { border: "border-orange-500", bg: "bg-orange-50 dark:bg-orange-950/30", badge: "bg-orange-100 text-orange-800", icon: AlertCircle,   label: "⚠️ URGENT",    color: "text-orange-600" },
   moderate:  { border: "border-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950/30", badge: "bg-yellow-100 text-yellow-800", icon: AlertTriangle, label: "⚠️ MODERATE",  color: "text-yellow-600" },
-  mild:      { border: "border-green-500",  bg: "bg-green-50 dark:bg-green-950/30",   badge: "bg-green-100 text-green-800",  icon: CheckCircle,   label: "✅ MILD",       color: "text-green-600"  },
-  info:      { border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30",     badge: "bg-blue-100 text-blue-800",    icon: Info,          label: "ℹ️ INFO",       color: "text-blue-600"   },
+  mild:      { border: "border-green-500",  bg: "bg-green-50 dark:bg-green-950/30",   badge: "bg-green-100 text-green-800",   icon: CheckCircle,   label: "✅ MILD",       color: "text-green-600"  },
+  info:      { border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30",     badge: "bg-blue-100 text-blue-800",     icon: Info,          label: "ℹ️ INFO",       color: "text-blue-600"   },
 } as const;
 
 // ─── Structured card ────────────────────────────────────────────────────────────
@@ -169,6 +188,19 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
               See a Doctor Now
             </p>
             <p className="text-xs text-foreground">{data.doctorDirection}</p>
+            {/* Google Maps link */}
+            <button
+              onClick={() =>
+                window.open(
+                  `https://www.google.com/maps/search/nearest+${encodeURIComponent(data.specialist || "doctor")}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+              className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-red-600 underline hover:text-red-800"
+            >
+              <MapPin className="w-3 h-3" /> Find nearest {data.specialist || "doctor"} on Maps
+            </button>
           </div>
         </div>
       )}
@@ -188,7 +220,7 @@ function StructuredCard({ data }: { data: StructuredResponse }) {
         </div>
       )}
 
-      {/* Possible causes (offline cache) */}
+      {/* Possible causes */}
       {data.possibleCauses.length > 0 && (
         <div className="bg-muted/60 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Possible Causes</p>
@@ -544,7 +576,7 @@ export const AIAssistant = () => {
     if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") return;
     if (!messages.length) return;
     const last = [...messages].reverse().find(m => m.type === "bot" && !m.isThinking);
-    if (!last) return;
+    if (!last || last.id === "welcome") return;
 
     let text = last.content || "";
     if (last.structuredData) {
@@ -564,7 +596,7 @@ export const AIAssistant = () => {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
-    utterance.rate = 1;
+    utterance.rate = 0.95;
     utterance.pitch = 1;
 
     try {
@@ -645,7 +677,7 @@ export const AIAssistant = () => {
                         : "bg-white/10 text-white border-white/40"
                     }`}
                   >
-                    English
+                    🇬🇧 English
                   </button>
                   <button
                     type="button"
@@ -659,7 +691,7 @@ export const AIAssistant = () => {
                         : "bg-white/10 text-white border-white/40"
                     }`}
                   >
-                    हिन्दी
+                    🇮🇳 हिन्दी
                   </button>
                 </div>
               </div>
@@ -743,7 +775,7 @@ export const AIAssistant = () => {
                       title: language === "hi" ? "वॉइस समर्थित नहीं" : "Voice not supported",
                       description: language === "hi"
                         ? "आपका ब्राउज़र स्पीच रिकग्निशन को सपोर्ट नहीं करता।"
-                        : "Your browser does not support speech recognition.",
+                        : "Your browser does not support speech recognition. Try Chrome.",
                     });
                     return;
                   }
