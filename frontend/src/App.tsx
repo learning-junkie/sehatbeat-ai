@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -10,6 +10,7 @@ import { UserProfileProvider } from "@/components/UserProfileProvider";
 import { TopNavigation } from "@/components/navigation/TopNavigation";
 import { BottomNavigation } from "@/components/navigation/BottomNavigation";
 import { AIAssistant } from "@/components/ai/AIAssistant";
+import Onboarding from "@/components/Onboarding";
 import Index from "@/pages/index";
 import ClinicalDocs from "./pages/ClinicalDocs";
 import Symptomate from "./pages/Symptomate";
@@ -32,8 +33,32 @@ if (!PUBLISHABLE_KEY || PUBLISHABLE_KEY === 'pk_test_demo_key_for_development') 
 }
 
 const App = () => {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedLang = window.localStorage.getItem("sehatbeat_lang");
+    setShowOnboarding(!storedLang);
+    setIsReady(true);
+  }, []);
+
+  if (!isReady) {
+    return null;
+  }
+
   const isOffline =
     typeof navigator !== "undefined" && navigator && !navigator.onLine;
+
+  if (showOnboarding) {
+    return (
+      <Onboarding
+        onComplete={() => {
+          setShowOnboarding(false);
+        }}
+      />
+    );
+  }
 
   // Offline mode: bypass Clerk entirely and show a stripped-down, read-only shell
   if (isOffline) {
