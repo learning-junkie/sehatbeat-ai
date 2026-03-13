@@ -125,3 +125,26 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* ── SehatBeat AI Avatar animations ─────────────────────────────────────── */
+
+@keyframes float {
+  0%   { transform: translateY(0px);  }
+  50%  { transform: translateY(-7px); }
+  100% { transform: translateY(0px);  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1.08); }
+  50%       { opacity: 0.85; transform: scale(1.14); }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 3.2s ease-in-out infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 3.2s ease-in-out infinite;
+  }
+}

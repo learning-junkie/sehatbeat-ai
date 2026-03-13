@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import AIAvatar from './ai/AIAvatar';
 import { 
   MessageCircle, 
   Send, 
@@ -399,9 +400,7 @@ Remember, while I can provide information and guidance, I cannot diagnose medica
       <Card className="w-full max-w-2xl h-[85vh] flex flex-col overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b">
           <CardTitle className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-              <Bot className="h-5 w-5 text-white" />
-            </div>
+            <AIAvatar size="sm" animated={false} />
             SehatBeat AI Assistant
             {initialBodyPart && (
               <Badge variant="secondary" className="ml-2">
@@ -502,7 +501,9 @@ Remember, while I can provide information and guidance, I cannot diagnose medica
                   >
                     <div className="flex items-start gap-2">
                       {message.type === 'bot' && (
-                        <Bot className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                        <div className="flex-shrink-0 -mt-0.5">
+                          <AIAvatar size="sm" animated={false} />
+                        </div>
                       )}
                       {message.type === 'user' && (
                         <User className="h-4 w-4 mt-0.5 text-white flex-shrink-0" />

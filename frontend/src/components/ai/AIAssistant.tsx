@@ -13,6 +13,7 @@ import { useNetwork } from "@/hooks/useNetwork";
 import offlineHealthCache from "@/lib/offlineHealthCache.json";
 import { toast as sonnerToast } from "@/components/ui/sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import AIAvatar from "./AIAvatar";
 
 type AppLanguage = "en" | "hi";
 
@@ -731,8 +732,8 @@ export const AIAssistant = () => {
         className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 lg:bottom-8 lg:right-8 flex items-center justify-center"
       >
         <div className="relative">
-          <Bot className="w-7 h-7" />
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+          <AIAvatar size="sm" animated={true} />
+          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white animate-pulse z-10" />
         </div>
       </button>
     );
@@ -753,11 +754,9 @@ export const AIAssistant = () => {
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-teal-500 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
+            <AIAvatar size="sm" animated={false} />
             <span
-              className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-teal-500 ${
+              className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-teal-500 z-10 ${
                 isOnline ? "bg-emerald-400" : "bg-amber-300"
               }`}
             />
@@ -824,128 +823,160 @@ export const AIAssistant = () => {
 
       {!isMinimized && (
         <>
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex items-start gap-2.5 ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${msg.type === "bot" ? "bg-gradient-to-br from-blue-500 to-teal-500" : "bg-secondary"}`}>
-                  {msg.type === "bot" ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-secondary-foreground" />}
-                </div>
-                <div className={`max-w-[84%] rounded-2xl px-3 py-2.5 ${msg.type === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
-                  {msg.isThinking ? (
-                    <div className="flex items-center gap-2 py-1">
-                      <div className="flex gap-1">
-                        {[0, 1, 2].map(i => (
-                          <span key={i} className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                        ))}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {t("ai_analyzing_short")}
-                      </span>
-                    </div>
-                  ) : msg.structuredData ? (
-                    <StructuredCard data={msg.structuredData} />
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
-                  )}
-                  {!msg.isThinking && (
-                    <span className="text-[11px] opacity-50 mt-1.5 block">
-                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  )}
+          {/* ── Body: fixed avatar column (left) + scrollable messages (right) ── */}
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+
+            {/* Left avatar column — hidden on very small screens */}
+            <div className="hidden sm:flex flex-col items-center justify-start pt-5 px-2 flex-shrink-0 w-[76px] border-r border-border/40 bg-gradient-to-b from-blue-50/60 to-teal-50/40 dark:from-blue-950/20 dark:to-teal-950/10">
+              <div className="sticky top-5">
+                <AIAvatar size="md" animated={true} />
+                {/* Online indicator dot */}
+                <div className="mt-2 flex items-center justify-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+                  <span className="text-[9px] text-muted-foreground font-medium">
+                    {isOnline ? "Online" : "Offline"}
+                  </span>
                 </div>
               </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Suggestion chips */}
-          {messages.filter(m => m.type === "user").length === 0 && (
-            <div className="px-3 pb-2 flex gap-2 overflow-x-auto flex-shrink-0" style={{ scrollbarWidth: "none" }}>
-              {suggestions.map(s => (
-                <button
-                  key={s}
-                  onClick={() => sendMessage(s)}
-                  className="text-xs whitespace-nowrap bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-full px-3 py-1.5 transition-colors flex-shrink-0"
-                >
-                  {s}
-                </button>
-              ))}
             </div>
-          )}
 
-          {/* Input */}
-          <div className="p-3 border-t flex-shrink-0">
-            <div className="flex gap-2 items-center">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={`w-9 h-9 rounded-full p-0 flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600 border-red-500" : ""}`}
-                onClick={() => {
-                  const rec = recognitionRef.current;
-                  if (!rec) {
-                    toast({
-                      title: t("voice_not_supported"),
-                      description: t("voice_not_supported_desc"),
-                    });
-                    return;
-                  }
-                  try {
-                    if (isListening) {
-                      rec.stop();
-                      setIsListening(false);
-                    } else {
-                      rec.start();
-                      setIsListening(true);
+            {/* Right: messages scroll area */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-4">
+                {messages.map(msg => (
+                  <div key={msg.id} className={`flex items-start gap-2.5 ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                    {/* Show small avatar for bot on mobile (hidden on sm+ where left column shows) */}
+                    <div className={`sm:hidden w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${msg.type === "bot" ? "bg-gradient-to-br from-blue-500 to-teal-500" : "bg-secondary"}`}>
+                      {msg.type === "bot" ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-secondary-foreground" />}
+                    </div>
+                    {/* On desktop hide the per-message bot icon since the left column handles it */}
+                    {msg.type === "user" && (
+                      <div className="hidden sm:flex w-7 h-7 rounded-full items-center justify-center flex-shrink-0 bg-secondary">
+                        <User className="w-4 h-4 text-secondary-foreground" />
+                      </div>
+                    )}
+                    <div className={`max-w-[84%] rounded-2xl px-3 py-2.5 ${
+                      msg.type === "user"
+                        ? "bg-primary text-primary-foreground rounded-tr-sm"
+                        : "bg-muted rounded-tl-sm"
+                    }`}>
+                      {msg.isThinking ? (
+                        <div className="flex items-center gap-2 py-1">
+                          <div className="flex gap-1">
+                            {[0, 1, 2].map(i => (
+                              <span key={i} className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {t("ai_analyzing_short")}
+                          </span>
+                        </div>
+                      ) : msg.structuredData ? (
+                        <StructuredCard data={msg.structuredData} language={language} />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                      )}
+                      {!msg.isThinking && (
+                        <span className="text-[11px] opacity-50 mt-1.5 block">
+                          {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Suggestion chips */}
+              {messages.filter(m => m.type === "user").length === 0 && (
+                <div className="px-3 pb-2 flex gap-2 overflow-x-auto flex-shrink-0" style={{ scrollbarWidth: "none" }}>
+                  {suggestions.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => sendMessage(s)}
+                      className="text-xs whitespace-nowrap bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-full px-3 py-1.5 transition-colors flex-shrink-0"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Input */}
+              <div className="p-3 border-t flex-shrink-0">
+                <div className="flex gap-2 items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`w-9 h-9 rounded-full p-0 flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600 border-red-500" : ""}`}
+                    onClick={() => {
+                      const rec = recognitionRef.current;
+                      if (!rec) {
+                        toast({
+                          title: t("voice_not_supported"),
+                          description: t("voice_not_supported_desc"),
+                        });
+                        return;
+                      }
+                      try {
+                        if (isListening) {
+                          rec.stop();
+                          setIsListening(false);
+                        } else {
+                          rec.start();
+                          setIsListening(true);
+                        }
+                      } catch {
+                        setIsListening(false);
+                      }
+                    }}
+                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                  >
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </Button>
+                  <Input
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder={
+                      isListening
+                        ? language === "hi" ? "सुन रहा है..." : "Listening..."
+                        : language === "hi" ? "अपने लक्षण बताएं..." : "Describe your symptoms..."
                     }
-                  } catch {
-                    setIsListening(false);
-                  }
-                }}
-                aria-label={isListening ? "Stop listening" : "Start voice input"}
-              >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder={
-                  isListening
-                    ? language === "hi" ? "सुन रहा है..." : "Listening..."
-                    : language === "hi" ? "अपने लक्षण बताएं..." : "Describe your symptoms..."
-                }
-                disabled={isLoading}
-                className="flex-1 text-sm rounded-full h-9 px-4"
-              />
-              <Button
-                onClick={() => sendMessage()}
-                disabled={isLoading || !input.trim()}
-                size="sm"
-                className="w-9 h-9 rounded-full p-0 bg-gradient-to-br from-blue-500 to-teal-500 hover:opacity-90 flex-shrink-0"
-              >
-                {isLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
-            {isListening && (
-              <p className="text-[11px] text-red-500 mt-1.5 text-center animate-pulse">
-                🎤 {language === "hi" ? "बोलिए..." : "Speak now..."}
-              </p>
-            )}
-            <p className="text-center text-[11px] text-muted-foreground mt-2 flex items-center justify-center gap-1">
-              <MessageCircle className="w-3 h-3" />
-              {language === "hi"
-                ? "यह पेशेवर चिकित्सा सलाह का विकल्प नहीं है"
-                : "Not a substitute for professional medical advice"}
-            </p>
-          </div>
+                    disabled={isLoading}
+                    className="flex-1 text-sm rounded-full h-9 px-4"
+                  />
+                  <Button
+                    onClick={() => sendMessage()}
+                    disabled={isLoading || !input.trim()}
+                    size="sm"
+                    className="w-9 h-9 rounded-full p-0 bg-gradient-to-br from-blue-500 to-teal-500 hover:opacity-90 flex-shrink-0"
+                  >
+                    {isLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
+                {isListening && (
+                  <p className="text-[11px] text-red-500 mt-1.5 text-center animate-pulse">
+                    🎤 {language === "hi" ? "बोलिए..." : "Speak now..."}
+                  </p>
+                )}
+                <p className="text-center text-[11px] text-muted-foreground mt-2 flex items-center justify-center gap-1">
+                  <MessageCircle className="w-3 h-3" />
+                  {language === "hi"
+                    ? "यह पेशेवर चिकित्सा सलाह का विकल्प नहीं है"
+                    : "Not a substitute for professional medical advice"}
+                </p>
+              </div>
+            </div>{/* end right column */}
+          </div>{/* end body flex row */}
         </>
       )}
     </Card>
