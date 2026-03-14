@@ -74,17 +74,17 @@ export const TopNavigation = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-2">
             {navigationItems.map((item) => (
               <Link
                 key={item.name}
                 to={item.path}
                 className={`
-                  px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                  px-[14px] py-[6px] rounded-lg text-sm font-medium transition-all duration-200
                   ${isActive(item.path) 
                     ? item.highlighted 
                       ? "bg-gradient-accent text-accent-foreground shadow-medium" 
-                      : "bg-primary-soft text-primary"
+                      : "bg-[rgba(14,165,233,0.1)] text-[#0ea5e9] font-semibold"
                     : item.highlighted
                       ? "hover:bg-accent-soft text-accent"
                       : "hover:bg-muted text-muted-foreground hover:text-foreground"

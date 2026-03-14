@@ -115,13 +115,14 @@ export const HeroSection = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isDemoOpen]);
 
-  const heroText = t("home.hero");
-  const heroParts = heroText.includes(",") ? heroText.split(",") : [heroText, ""];
-  const heroLine1 = heroParts[0].trim();
-  const heroLine2 = heroParts.slice(1).join(",").trim();
+  const heroLine1 = t("home.heroLine1");
+  const heroLine2 = t("home.heroLine2");
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section
+      className="relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden"
+      style={{ padding: "80px 20px 60px" }}
+    >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -132,175 +133,186 @@ export const HeroSection = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/60" />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            {/* Left: Text Content */}
-            <div className="flex-1 text-center md:text-left space-y-8">
-          {/* Badge */}
-          <Badge className="bg-gradient-accent text-accent-foreground px-4 py-2 text-sm animate-float" variant="secondary">
-            <Activity className="w-4 h-4 mr-2" />
-            {t("home.badge")}
-          </Badge>
+      <div
+        className="relative z-10 w-full flex flex-col items-center"
+        style={{ maxWidth: "900px", margin: "0 auto" }}
+      >
+        <div className="flex flex-col items-center w-full">
+            <Badge className="bg-gradient-accent text-accent-foreground px-4 py-2 text-sm animate-float" variant="secondary">
+              <Activity className="w-4 h-4 mr-2" />
+              {t("home.badge")}
+            </Badge>
 
-          {/* Main Heading */}
-          <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              {heroLine1}{heroLine2 ? "," : ""}
-              {heroLine2 && (
-                <span className="block text-transparent bg-clip-text bg-gradient-hero">
+            <div className="mt-6 w-full flex flex-col items-center">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-center w-full" style={{ color: "#1a202c" }}>
+                {heroLine1}
+                <span
+                  className="block"
+                  style={{
+                    background: "linear-gradient(135deg, #0ea5e9 0%, #0d9488 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text"
+                  }}
+                >
                   {heroLine2}
                 </span>
-              )}
-            </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto md:mx-0 leading-relaxed">
-            {t("home.heroSub")}
-          </p>
-          </div>
+              </h1>
 
-          {/* AI Intro Card — single trigger-only input; opens floating AIAssistant (no duplicate chatbot) */}
-          <div className="mt-6">
-            <div className="mx-auto max-w-3xl w-full text-left">
-              <div className="rounded-2xl border border-border/60 bg-white/80 backdrop-blur-xl shadow-xl shadow-black/5 p-6 md:p-8 space-y-6">
-                <div className="flex items-start gap-3">
-                  <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-400 to-cyan-400 flex items-center justify-center shadow-md">
-                    <MessageCircle className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-base md:text-lg font-semibold text-foreground">
-                      {t("ai.title")}
-                    </h2>
-                    <p className="mt-1 text-sm md:text-base text-muted-foreground">
-                      {t("home.aiCardSubtitle")}
-                    </p>
-                  </div>
+              <p
+                className="text-center mx-auto"
+                style={{
+                  fontSize: "17px",
+                  fontWeight: 400,
+                  color: "#4a5568",
+                  lineHeight: 1.6,
+                  maxWidth: "520px",
+                  marginTop: "12px",
+                  marginBottom: "36px"
+                }}
+              >
+                {t("home.heroSub")}
+              </p>
+            </div>
+
+            {/* AI Intro Card — single trigger-only input; opens floating AIAssistant (no duplicate chatbot) */}
+            <div className="relative w-full flex justify-center">
+              <div className="relative mx-auto w-full" style={{ maxWidth: "760px" }}>
+                <div className="w-full text-left rounded-[20px] bg-white/90 backdrop-blur-xl p-6 md:pr-40 space-y-6" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}>
+              <div className="flex items-start gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-400 to-cyan-400 flex items-center justify-center shadow-md">
+                  <MessageCircle className="w-6 h-6 text-white" />
                 </div>
-
-                {/* Single pill input — trigger only: dispatches sehatbeat-open-ai */}
-                <div className="bg-white border border-gray-200 shadow-lg rounded-full px-4 py-3 flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-9 w-9 rounded-full flex-shrink-0 bg-teal-500 text-white hover:bg-teal-600"
-                    onClick={() => openAIWithMessage(voiceInput)}
-                    aria-label={t("ai.sendButton")}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                  <Input
-                    type="text"
-                    value={voiceInput}
-                    onChange={(e) => setVoiceInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        openAIWithMessage(voiceInput);
-                      }
-                    }}
-                    placeholder={t("home.heroSymptomsPlaceholder")}
-                    className="flex-1 border-0 bg-transparent px-2 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
-                    aria-label={t("home.heroSymptomsPlaceholder")}
-                  />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className={`h-9 w-9 rounded-full flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-500 text-white hover:bg-teal-600"}`}
-                    onClick={() => {
-                      const rec = recognitionRef.current;
-                      if (!rec) return;
-                      try {
-                        if (isListening) {
-                          rec.stop();
-                          setIsListening(false);
-                        } else {
-                          rec.start();
-                          setIsListening(true);
-                        }
-                      } catch {
-                        setIsListening(false);
-                      }
-                    }}
-                    aria-label={isListening ? t("ai.stopListening") : t("ai.startVoiceInput")}
-                  >
-                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </Button>
-                </div>
-                {isListening && (
-                  <p className="text-center text-sm text-red-500 animate-pulse">{t("ai.listening")}</p>
-                )}
-
-                <div className="space-y-2">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    {t("home.aiCardTryAsking")}
+                <div>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">
+                    {t("ai.title")}
+                  </h2>
+                  <p className="mt-1" style={{ fontSize: "14px", color: "#718096", marginTop: "4px" }}>
+                    {t("home.aiCardSubtitle")}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {getSuggestedPrompts(t).map((prompt) => (
-                      <button
-                        key={prompt}
-                        type="button"
-                        className="inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-3 py-2 text-xs md:text-sm text-muted-foreground hover:bg-background hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        onClick={() => handleSuggestionClick(prompt)}
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
+                </div>
+              </div>
+
+              {/* Single pill input — trigger only: dispatches sehatbeat-open-ai */}
+              <div className="bg-white border border-gray-200 shadow-lg rounded-full px-4 py-3 min-h-[52px] flex items-center gap-2 focus-within:ring-2 focus-within:ring-teal-300">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-full flex-shrink-0 bg-teal-500 text-white hover:bg-teal-600"
+                  onClick={() => openAIWithMessage(voiceInput)}
+                  aria-label={t("ai.sendButton")}
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+                <Input
+                  type="text"
+                  value={voiceInput}
+                  onChange={(e) => setVoiceInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      openAIWithMessage(voiceInput);
+                    }
+                  }}
+                  placeholder={t("home.heroSymptomsPlaceholder")}
+                  className="flex-1 border-0 bg-transparent px-2 text-sm placeholder:text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0"
+                  aria-label={t("home.heroSymptomsPlaceholder")}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className={`h-9 w-9 rounded-full flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-500 text-white hover:bg-teal-600"}`}
+                  onClick={() => {
+                    const rec = recognitionRef.current;
+                    if (!rec) return;
+                    try {
+                      if (isListening) {
+                        rec.stop();
+                        setIsListening(false);
+                      } else {
+                        rec.start();
+                        setIsListening(true);
+                      }
+                    } catch {
+                      setIsListening(false);
+                    }
+                  }}
+                  aria-label={isListening ? t("ai.stopListening") : t("ai.startVoiceInput")}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
+              </div>
+              {isListening && (
+                <p className="text-center text-sm text-red-500 animate-pulse">{t("ai.listening")}</p>
+              )}
+
+              <div className="space-y-2">
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "#718096", letterSpacing: "0.01em" }}>
+                  {t("home.aiCardTryAsking")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {getSuggestedPrompts(t).map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-4 py-2 text-xs md:text-sm text-muted-foreground hover:bg-teal-50 hover:border-teal-300 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      onClick={() => handleSuggestionClick(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="rounded-xl border-2 px-5 py-2.5 hover:bg-muted/60 hover:translate-x-1 transition-transform duration-300 flex items-center justify-center gap-2"
+                  onClick={() => setIsDemoOpen(true)}
+                >
+                  <PlayCircle className="w-5 h-5" />
+                  {t("home.watchDemo")}
+                </Button>
+              </div>
                 </div>
 
-                <div className="pt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="w-full sm:w-auto rounded-xl border-2 hover:bg-muted/60 transition-all duration-300 flex items-center justify-center gap-2"
-                    onClick={() => setIsDemoOpen(true)}
-                  >
-                    <PlayCircle className="w-5 h-5" />
-                    {t("home.watchDemo")}
-                  </Button>
-                </div>
+                <img
+                  src="/assets/doctor-avatar.png"
+                  alt="SehatBeat AI Doctor"
+                  className="absolute pointer-events-none hidden md:block"
+                  style={{
+                    right: "-128px",
+                    bottom: "0",
+                    height: "112%",
+                    width: "auto",
+                    objectFit: "contain",
+                    objectPosition: "bottom",
+                    zIndex: 10,
+                    filter: "drop-shadow(-8px 0 24px rgba(0,0,0,0.10))"
+                  }}
+                />
               </div>
             </div>
           </div>
 
-          {/* Feature Pills */}
-          <div className="flex flex-wrap gap-6 justify-center md:justify-start items-center pt-8">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Shield className="w-4 h-4 text-secondary" />
-              <span>{t("home.statsCompliant")}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="w-4 h-4 text-secondary" />
-              <span>{t("home.statsPatients")}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Zap className="w-4 h-4 text-secondary" />
-              <span>{t("home.statsUptime")}</span>
-            </div>
+        {/* Trust Indicators */}
+        <div className="flex flex-wrap justify-center items-center gap-10 md:gap-12 pt-8 mt-8" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:scale-105 transition-transform">
+            <Shield className="w-[22px] h-[22px] text-secondary" />
+            <span className="text-[14px] font-semibold">{t("home.statsCompliant")}</span>
           </div>
-            </div>{/* end left column */}
-
-            {/* Right: Doctor Avatar */}
-            <div className="hidden md:flex flex-shrink-0 items-center justify-center">
-              <img
-                src="/assets/doctor-avatar.png"
-                alt="SehatBeat AI Doctor"
-                className="h-[420px] w-auto object-contain animate-float"
-                style={{ filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.15))" }}
-              />
-            </div>
-            {/* Mobile: show doctor avatar below text */}
-            <div className="flex md:hidden justify-center w-full">
-              <img
-                src="/assets/doctor-avatar.png"
-                alt="SehatBeat AI Doctor"
-                className="h-[280px] w-auto object-contain animate-float"
-                style={{ filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.15))" }}
-              />
-            </div>
-          </div>{/* end flex row */}
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:scale-105 transition-transform">
+            <Users className="w-[22px] h-[22px] text-secondary" />
+            <span className="text-[14px] font-semibold">{t("home.statsPatients")}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:scale-105 transition-transform">
+            <Zap className="w-[22px] h-[22px] text-secondary" />
+            <span className="text-[14px] font-semibold">{t("home.statsUptime")}</span>
+          </div>
         </div>
       </div>
 
