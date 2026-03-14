@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   CreditCard, 
-  User, 
+  User,
   Loader2,
   CheckCircle,
   ArrowLeft
