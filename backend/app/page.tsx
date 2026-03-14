@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   useEffect(() => {
     // Set a timeout to show loading state
