@@ -13,6 +13,7 @@ import {
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "convex/react";
+import { api } from "../../../backend/convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useConvex";
 import { useClerkBilling } from "../config/clerk";
 
@@ -31,7 +32,7 @@ export const Checkout = ({ cartItems, totalAmount, onSuccess, onCancel }: Checko
   const [step, setStep] = useState<'form' | 'payment' | 'success'>('form');
   
   const convexUser = useCurrentUser();
-  const createOrder = useMutation("createOrder");
+  const createOrder = useMutation(api.myFunctions.createOrder);
   const { createPaymentIntent, confirmPayment } = useClerkBilling();
   
   // Form state
