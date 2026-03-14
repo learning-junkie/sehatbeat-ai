@@ -1,5 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// ── CORS preflight ─────────────────────────────────────────────────────────
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
+// ── Helper: add CORS headers to any response ───────────────────────────────
+function jsonWithCors(body: object, status = 200): NextResponse {
+  const res = NextResponse.json(body, { status });
+  res.headers.set("Access-Control-Allow-Origin", "*");
+  res.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return res;
+}
+
+// ── Strict language-enforcement system prompt ──────────────────────────────
+const getSystemPrompt = (language: string): string => {
+  const safeLanguage = language === "hi" ? "hi" : "en";
+
+  const languageInstruction =
+    safeLanguage === "hi"
+      ? `LANGUAGE INSTRUCTION (HIGHEST PRIORITY — NON-NEGOTIABLE):
+You MUST respond entirely in Hindi using Devanagari script.
+Every single word of your JSON response values must be written in Hindi.
+Do NOT write any English words in your response values except for medical
+terms that have no Hindi equivalent — and even those must be transliterated
+into Devanagari (e.g. "Ibuprofen" → "इबुप्रोफ़ेन").
+This instruction overrides everything — even if the user writes in English,
+you MUST still respond in Hindi. There are no exceptions.`
+      : `LANGUAGE INSTRUCTION (HIGHEST PRIORITY — NON-NEGOTIABLE):
+You MUST respond entirely in English.
+Every single word of your JSON response values must be written in English.
+Do NOT use Hindi, Devanagari script, Urdu, or any other language anywhere
+in your response values.
+This instruction overrides everything — even if the user writes in Hindi or
+any other language, you MUST still respond in English. There are no exceptions.`;
+
+  const offTopicMsg =
+    safeLanguage === "hi"
+      ? "मैं केवल स्वास्थ्य संबंधी प्रश्नों में सहायता कर सकता हूं।"
+      : "I can only help with health-related questions.";
+
+  return `You are SehatBeat AI, a compassionate and knowledgeable medical assistant designed to help patients understand their health symptoms.
+
+${languageInstruction}
+
+SCOPE: Help with ANY health-related question — symptoms, medications, conditions, nutrition, mental health, first aid, and general wellness. Accept all naturally phrased inputs regardless of the language they are written in. Accept typos: "faver"→fever, "hedache"→headache, "stomik"→stomach.
+
+OFF-TOPIC: If the message is completely unrelated to health (e.g. sports, math, news), respond ONLY with:
+{"offTopic": true, "message": "${offTopicMsg}"}
+
+FOR ALL HEALTH QUERIES respond with ONLY the following JSON object.
+No markdown. No backticks. No explanation. No text before or after the JSON.
+
+{
+  "problem": "condition name based on symptoms",
+  "severity": "detailed severity description with clinical context",
+  "severityLevel": "emergency | high | moderate | mild | info",
+  "possibleCauses": ["cause 1", "cause 2", "cause 3"],
+  "possibleConditions": ["condition 1", "condition 2"],
+  "immediateSteps": ["step 1", "step 2", "step 3"],
+  "recommendations": ["recommendation 1", "recommendation 2"],
+  "whenToSeekHelp": ["warning sign 1", "warning sign 2"],
+  "specialist": "specific specialist e.g. Cardiologist, ENT, General Physician",
+  "doctorDirection": "when/why to see a doctor, which tests to request",
+  "disclaimer": "medical disclaimer"
+}
+
+ALL values in the JSON must be in the language specified by the LANGUAGE INSTRUCTION above.
+
+severityLevel rules:
+- emergency: chest pain, breathing difficulty, unconsciousness, stroke → doctorDirection MUST say call 112 NOW
+- high: fever >103°F/39.4°C, severe pain, persistent vomiting → see doctor within 24 hours
+- moderate: symptoms 2+ days or worsening → see doctor within 3 days
+- mild: minor self-limiting symptoms → home remedies sufficient`;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let symptoms = "";
   let language = "en";
@@ -15,48 +100,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // keep defaults
   }
 
-  const isHindi = language === "hi";
-  console.log("[SehatBeat] symptoms:", symptoms.slice(0, 80), "| lang:", language);
+  const safeLanguage = language === "hi" ? "hi" : "en";
+  const isHindi = safeLanguage === "hi";
+  const systemPrompt = getSystemPrompt(safeLanguage);
 
-  // ── System prompt ───────────────────────────────────────────────────────────
-  const systemPrompt = `You are SehatBeat AI, a compassionate medical assistant for patients in India.
+  console.log("[SehatBeat] symptoms:", symptoms.slice(0, 80), "| lang:", safeLanguage);
 
-LANGUAGE RULE: Auto-detect the user's language and respond in the SAME language.
-- Hindi (Devanagari) → respond in Hindi
-- Romanized Hindi / Hinglish → respond in Hindi or English naturally
-- English → respond in English
-
-SCOPE: Help with any health question — symptoms, medications, conditions, nutrition, mental health, first aid, wellness.
-Accept casual phrasing: "I have a headache", "mujhe bukhar hai", "मुझे सिरदर्द है", "feeling tired".
-Do not be overly literal — understand intent. Accept typos: "faver"→fever, "hedache"→headache.
-
-OFF-TOPIC: Only if completely unrelated to health (e.g. sports, math, politics), respond:
-{"offTopic": true, "message": "${isHindi ? "मैं केवल स्वास्थ्य संबंधी प्रश्नों में सहायता कर सकता हूं।" : "I can only help with health-related questions."}"}
-
-FOR ALL HEALTH QUERIES: Respond ONLY with valid JSON — no markdown, no code fences, no preamble.
-
-JSON schema (respond in user's language):
-{
-  "problem": "condition name",
-  "severity": "detailed severity description",
-  "severityLevel": "emergency | high | moderate | mild | info",
-  "possibleCauses": ["cause 1", "cause 2"],
-  "possibleConditions": ["condition 1", "condition 2"],
-  "immediateSteps": ["step 1", "step 2"],
-  "recommendations": ["rec 1", "rec 2"],
-  "whenToSeekHelp": ["warning 1", "warning 2"],
-  "specialist": "specific specialist type",
-  "doctorDirection": "when/why to see a doctor, which tests to ask for",
-  "disclaimer": "medical disclaimer"
-}
-
-severityLevel rules:
-- emergency: chest pain, no breathing, unconsciousness → mention 112 in doctorDirection
-- high: fever >103°F, severe pain → see doctor within 24 hours
-- moderate: symptoms 2+ days → see doctor within 3 days
-- mild: minor symptoms → home remedies`;
-
-  // ── Helper: parse AI JSON ───────────────────────────────────────────────────
+  // ── Helper: parse AI JSON ─────────────────────────────────────────────────
   function parseAIResponse(raw: string) {
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : raw;
@@ -79,7 +129,7 @@ severityLevel rules:
     return parsed;
   }
 
-  // ── 1. Try Groq (free, fast, generous limits) ─────────────────────────────
+  // ── 1. Groq — primary (free, fast, generous limits) ────────────────────
   const GROQ_KEY = process.env.GROQ_API_KEY;
 
   if (GROQ_KEY) {
@@ -112,7 +162,7 @@ severityLevel rules:
           try {
             const parsed = parseAIResponse(raw);
             console.log("[Groq] Success:", parsed.problem);
-            return NextResponse.json(parsed);
+            return jsonWithCors(parsed);
           } catch {
             console.error("[Groq] JSON parse failed. Raw:", raw.slice(0, 200));
           }
@@ -125,10 +175,10 @@ severityLevel rules:
       console.error("[Groq] Call failed:", (error as Error).message);
     }
   } else {
-    console.warn("[SehatBeat] GROQ_API_KEY not set");
+    console.warn("[SehatBeat] GROQ_API_KEY not set — skipping Groq");
   }
 
-  // ── 2. Fallback: Gemini 2.5 Flash ─────────────────────────────────────────
+  // ── 2. Gemini 2.5 Flash — fallback ────────────────────────────────────
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
   if (GEMINI_KEY) {
@@ -155,7 +205,7 @@ severityLevel rules:
           try {
             const parsed = parseAIResponse(raw);
             console.log("[Gemini] Success:", parsed.problem);
-            return NextResponse.json(parsed);
+            return jsonWithCors(parsed);
           } catch {
             console.error("[Gemini] JSON parse failed. Raw:", raw.slice(0, 200));
           }
@@ -168,10 +218,10 @@ severityLevel rules:
       console.error("[Gemini] Call failed:", (error as Error).message);
     }
   } else {
-    console.warn("[SehatBeat] GEMINI_API_KEY not set");
+    console.warn("[SehatBeat] GEMINI_API_KEY not set — skipping Gemini");
   }
 
-  // ── 3. Fallback: Perplexity ────────────────────────────────────────────────
+  // ── 3. Perplexity — last resort ────────────────────────────────────────
   const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 
   if (PERPLEXITY_KEY) {
@@ -203,9 +253,9 @@ severityLevel rules:
           try {
             const parsed = parseAIResponse(raw);
             console.log("[Perplexity] Success:", parsed.problem);
-            return NextResponse.json(parsed);
+            return jsonWithCors(parsed);
           } catch {
-            return NextResponse.json({
+            return jsonWithCors({
               problem: isHindi ? "लक्षण विश्लेषण" : "Symptom Analysis",
               severity: raw,
               severityLevel: "info",
@@ -213,7 +263,9 @@ severityLevel rules:
               recommendations: [], whenToSeekHelp: [],
               specialist: isHindi ? "सामान्य चिकित्सक" : "General Physician",
               doctorDirection: "",
-              disclaimer: isHindi ? "यह जानकारी केवल सामान्य मार्गदर्शन के लिए है।" : "This is for informational purposes only.",
+              disclaimer: isHindi
+                ? "यह जानकारी केवल सामान्य मार्गदर्शन के लिए है।"
+                : "This is for informational purposes only.",
             });
           }
         }
@@ -226,13 +278,13 @@ severityLevel rules:
     }
   }
 
-  // ── No provider worked ─────────────────────────────────────────────────────
+  // ── All providers failed ────────────────────────────────────────────────
   console.error("[SehatBeat] All AI providers failed or not configured");
-  return NextResponse.json(
+  return jsonWithCors(
     {
       error: "AI service unavailable",
-      hint: "Add GROQ_API_KEY to backend/.env.local — free at console.groq.com",
+      hint: "Ensure GROQ_API_KEY is set in backend/.env.local — free at console.groq.com",
     },
-    { status: 503 }
+    503
   );
 }

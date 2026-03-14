@@ -26,11 +26,55 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const categories = ['All', 'Pain Relief', 'Vitamins', 'Digestive Health', 'Antibiotics', 'Allergy'];
 
+type GeminiMedicine = {
+  name: string;
+  genericName?: string;
+  category?: string;
+  uses?: string[];
+  dosage?: string;
+  sideEffects?: string[];
+  price?: number;
+  requiresPrescription?: boolean;
+  manufacturer?: string;
+};
+
+function mapGeminiToDisplay(m: GeminiMedicine, index: number): {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  dosage?: string;
+  manufacturer?: string;
+  inStock: boolean;
+  prescriptionRequired: boolean;
+  genericName?: string;
+  imageUrl?: string;
+} {
+  const uses = Array.isArray(m.uses) ? m.uses : [];
+  return {
+    _id: `gemini-${index}-${(m.name || "").replace(/\s/g, "-")}`,
+    name: m.name || "Medicine",
+    description: uses.length ? uses[0] : (m.category || "General use"),
+    price: typeof m.price === "number" ? m.price : 99,
+    category: m.category || "General",
+    dosage: m.dosage,
+    manufacturer: m.manufacturer,
+    inStock: true,
+    prescriptionRequired: !!m.requiresPrescription,
+    genericName: m.genericName,
+    imageUrl: undefined,
+  };
+}
+
+const backendBase = (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_BACKEND_URL)
+  ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
+  : "http://localhost:3000";
+
 const Medicine = () => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [sortBy, setSortBy] = useState<"relevance" | "priceLowHigh" | "priceHighLow">("relevance");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [prescriptionOnly, setPrescriptionOnly] = useState(false);
@@ -39,26 +83,38 @@ const Medicine = () => {
   const { isOnline } = useNetwork();
   const [isVoiceSearching, setIsVoiceSearching] = useState(false);
   const searchRecognitionRef = useRef<SpeechRecognition | null>(null);
-  
-  // Fetch medicines from Convex
-  const medicines = useMedicines(
+
+  const [geminiMedicines, setGeminiMedicines] = useState<ReturnType<typeof mapGeminiToDisplay>[] | null>(null);
+  const [geminiLoading, setGeminiLoading] = useState(false);
+
+  const convexMedicines = useMedicines(
     selectedCategory === "All" ? undefined : selectedCategory,
     searchTerm || undefined
   );
-  
-  // Cart functionality
+
   const { cartItems, addItemToCart, updateItemQuantity, removeItemFromCart } = useCart();
 
-  // Set loading timeout after 10 seconds
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (medicines === undefined) {
-        setLoadingTimeout(true);
+    if (convexMedicines !== undefined && Array.isArray(convexMedicines) && convexMedicines.length > 0) {
+      return;
+    }
+    const timer = setTimeout(async () => {
+      if (convexMedicines === undefined || (Array.isArray(convexMedicines) && convexMedicines.length === 0)) {
+        setGeminiLoading(true);
+        try {
+          const res = await fetch(`${backendBase}/api/medicines`, { method: "GET" });
+          const data = await res.json().catch(() => ({}));
+          const list = Array.isArray(data.medicines) ? data.medicines : [];
+          setGeminiMedicines(list.map((m: GeminiMedicine, i: number) => mapGeminiToDisplay(m, i)));
+        } catch {
+          setGeminiMedicines([]);
+        } finally {
+          setGeminiLoading(false);
+        }
       }
-    }, 10000);
-
+    }, 8000);
     return () => clearTimeout(timer);
-  }, [medicines]);
+  }, [convexMedicines]);
 
   // Voice search (speech-to-text) for medicine search bar
   useEffect(() => {
@@ -114,10 +170,26 @@ const Medicine = () => {
       }
     };
   }, []);
-  const baseMedicines = Array.isArray(medicines) ? medicines : [];
+  const hasConvex = Array.isArray(convexMedicines) && convexMedicines.length > 0;
+  const baseMedicines = hasConvex
+    ? convexMedicines
+    : (geminiMedicines ?? []);
 
   let filteredMedicines = baseMedicines;
 
+  if (searchTerm.trim()) {
+    const q = searchTerm.toLowerCase();
+    filteredMedicines = filteredMedicines.filter(
+      (m) =>
+        m.name?.toLowerCase().includes(q) ||
+        m.genericName?.toLowerCase().includes(q) ||
+        (m.category?.toLowerCase().includes(q)) ||
+        m.description?.toLowerCase().includes(q)
+    );
+  }
+  if (selectedCategory !== "All") {
+    filteredMedicines = filteredMedicines.filter((m) => m.category === selectedCategory);
+  }
   if (inStockOnly) {
     filteredMedicines = filteredMedicines.filter((medicine) => medicine.inStock);
   }
@@ -146,7 +218,7 @@ const Medicine = () => {
       await addItemToCart(medicineId, 1);
       
       // Find the medicine name for the toast
-      const medicine = medicines?.find(m => m._id === medicineId);
+      const medicine = baseMedicines.find(m => m._id === medicineId);
       
       toast({
         title: "Added to Cart!",
@@ -229,12 +301,12 @@ const Medicine = () => {
     return cartItem?._id;
   };
 
-    // Handle loading state with timeout
-  if (medicines === undefined) {
+  const showLoading = convexMedicines === undefined && geminiMedicines === null;
+
+  if (showLoading) {
     return (
       <div className="min-h-screen bg-background pt-20 pb-20 lg:pb-6">
         <div className="container mx-auto px-4 py-8">
-          {/* Header */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="p-3 bg-gradient-primary rounded-xl shadow-medium">
@@ -246,139 +318,10 @@ const Medicine = () => {
               {t("medicine.subtitle")}
             </p>
           </div>
-
-          {/* Loading State with Help */}
-          <div className="text-center py-16">
-            <div className="max-w-md mx-auto">
-              <div className="p-6 bg-blue-50 rounded-lg border-2 border-dashed border-blue-200">
-                <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2 text-blue-800">
-                  {loadingTimeout ? 'Loading Timeout - Connection Issue Detected' : 'Loading Medicines...'}
-                </h3>
-                <p className="text-blue-600 mb-4">
-                  {loadingTimeout 
-                    ? 'The connection to the medicine database has timed out. This usually means:'
-                    : 'This is taking longer than expected. The issue might be:'
-                  }
-                </p>
-                <div className="space-y-3">
-                  <ul className="text-sm text-blue-600 space-y-1 text-left">
-                    <li>• Convex backend is not running</li>
-                    <li>• Database connection issues</li>
-                    <li>• Network connectivity problems</li>
-                  </ul>
-                  
-                  <div className="pt-4 space-y-2">
-                    <Button 
-                      onClick={() => window.location.reload()} 
-                      variant="outline"
-                      className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
-                    >
-                      🔄 Refresh Page
-                    </Button>
-                    
-                    {loadingTimeout && (
-                      <Button 
-                        onClick={() => window.open('test_medicine_connection.html', '_blank')}
-                        className="w-full bg-red-600 text-white hover:bg-red-700"
-                      >
-                        🧪 Test Database Connection
-                      </Button>
-                    )}
-                    
-                    <div className="text-xs text-blue-500">
-                      💡 Tip: Make sure your Convex backend is running on port 3210
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Loading medicines...</p>
           </div>
-
-          {/* Show sample medicines if timeout occurs */}
-          {loadingTimeout && (
-            <div className="mt-8">
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Sample Medicines (Demo Mode)</h3>
-                <p className="text-sm text-gray-500">These are sample medicines to show the interface</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[
-                  {
-                    _id: 'demo-1',
-                    name: 'Paracetamol',
-                    description: 'Pain reliever and fever reducer',
-                    price: 5.99,
-                    category: 'Pain Relief',
-                    dosage: '500mg',
-                    manufacturer: 'Generic Pharma',
-                    inStock: true,
-                    prescriptionRequired: false,
-                    genericName: 'Acetaminophen'
-                  },
-                  {
-                    _id: 'demo-2',
-                    name: 'Ibuprofen',
-                    description: 'Anti-inflammatory pain reliever',
-                    price: 7.99,
-                    category: 'Pain Relief',
-                    dosage: '400mg',
-                    manufacturer: 'HealthCare Inc',
-                    inStock: true,
-                    prescriptionRequired: false,
-                    genericName: 'Ibuprofen'
-                  },
-                  {
-                    _id: 'demo-3',
-                    name: 'Cetirizine',
-                    description: 'Antihistamine for allergies',
-                    price: 12.99,
-                    category: 'Allergy',
-                    dosage: '10mg',
-                    manufacturer: 'AllergyCare',
-                    inStock: true,
-                    prescriptionRequired: false,
-                    genericName: 'Cetirizine'
-                  }
-                ].map((medicine) => (
-                  <Card key={medicine._id} className="hover:shadow-medium transition-shadow duration-200">
-                    <CardHeader className="p-4 pb-2">
-                      <div className="aspect-square bg-muted rounded-lg mb-3 flex items-center justify-center">
-                        <div className="text-muted-foreground text-sm">Demo</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-lg leading-tight">{medicine.name}</CardTitle>
-                          <Badge variant="secondary" className="text-xs">Demo</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{medicine.description}</p>
-                        {medicine.genericName && (
-                          <p className="text-xs text-muted-foreground">
-                            Generic: {medicine.genericName}
-                          </p>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-bold text-foreground">${medicine.price}</span>
-                        </div>
-                        <div className="text-center">
-                          <Button disabled className="w-full">
-                            Demo Mode - Not Functional
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -392,7 +335,7 @@ const Medicine = () => {
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="text-sm font-semibold text-blue-800 mb-2">Debug Info</h3>
             <div className="text-xs text-blue-700 space-y-1">
-              <p>Medicines Status: {medicines === undefined ? 'Loading...' : medicines === null ? 'Error' : `Loaded (${medicines.length})`}</p>
+              <p>Medicines Status: {showLoading ? 'Loading...' : `Loaded (${baseMedicines.length})`}</p>
               <p>Search Term: {searchTerm || 'None'}</p>
               <p>Selected Category: {selectedCategory}</p>
               <p>Cart Items: {cartItems?.length || 0}</p>

@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Activity, MessageCircle, PlayCircle, Shield, Users, Zap } from "lucide-react";
+import { Activity, MessageCircle, PlayCircle, Shield, Users, Zap, Send, Mic, MicOff } from "lucide-react";
 import heroImage from "@/assets/medical.jpg";
-import AIChatbot from "@/components/AIChatbot";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const getSuggestedPrompts = (t: (key: string) => string) => [
@@ -14,23 +13,69 @@ const getSuggestedPrompts = (t: (key: string) => string) => [
   t("home.aiCardPrompt4")
 ];
 
+const SpeechRecognitionAPI = typeof window !== "undefined" ? (window.SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
+
 export const HeroSection = () => {
   const { t } = useLanguage();
-  const [chatQuestion, setChatQuestion] = useState("");
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const demoModalRef = useRef<HTMLDivElement | null>(null);
 
-  const handleAskAI = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!chatQuestion.trim()) return;
-    setIsChatOpen(true);
+  // Single hero input — trigger only: opens floating AIAssistant via event (no duplicate chatbot)
+  const [voiceInput, setVoiceInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const voiceSubmitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openAIWithMessage = (message: string) => {
+    const trimmed = (message || voiceInput || "").trim();
+    if (!trimmed) return;
+    window.dispatchEvent(new CustomEvent("sehatbeat-open-ai", { detail: { message: trimmed } }));
+    setVoiceInput("");
   };
 
   const handleSuggestionClick = (prompt: string) => {
-    setChatQuestion(prompt);
-    setIsChatOpen(true);
+    window.dispatchEvent(new CustomEvent("sehatbeat-open-ai", { detail: { message: prompt } }));
   };
+
+  // Init SpeechRecognition for landing page voice input
+  useEffect(() => {
+    if (!SpeechRecognitionAPI) return;
+    const rec = new SpeechRecognitionAPI();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = (typeof window !== "undefined" && window.localStorage?.getItem("sehatbeat_lang") === "hi") ? "hi-IN" : "en-IN";
+    rec.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((r: any) => r[0]?.transcript ?? "")
+        .join(" ")
+        .trim();
+      if (transcript) setVoiceInput((prev) => (prev ? `${prev} ${transcript}` : transcript).trim());
+      const last = event.results[event.results.length - 1];
+      if (last?.isFinal && transcript) {
+        if (voiceSubmitTimeoutRef.current) clearTimeout(voiceSubmitTimeoutRef.current);
+        const finalText = transcript;
+        voiceSubmitTimeoutRef.current = setTimeout(() => {
+          if (finalText) {
+            window.dispatchEvent(new CustomEvent("sehatbeat-open-ai", { detail: { message: finalText } }));
+            setVoiceInput("");
+          }
+          voiceSubmitTimeoutRef.current = null;
+        }, 1000);
+      }
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    return () => {
+      if (voiceSubmitTimeoutRef.current) clearTimeout(voiceSubmitTimeoutRef.current);
+      try {
+        rec.onresult = null;
+        rec.onend = null;
+        rec.onerror = null;
+        rec.stop();
+      } catch { /* ignore */ }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isDemoOpen) return;
@@ -113,11 +158,10 @@ export const HeroSection = () => {
           </p>
           </div>
 
-          {/* AI Chat Intro Card */}
+          {/* AI Intro Card — single trigger-only input; opens floating AIAssistant (no duplicate chatbot) */}
           <div className="mt-6">
             <div className="mx-auto max-w-3xl w-full text-left">
               <div className="rounded-2xl border border-border/60 bg-white/80 backdrop-blur-xl shadow-xl shadow-black/5 p-6 md:p-8 space-y-6">
-                {/* AI Header */}
                 <div className="flex items-start gap-3">
                   <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-400 to-cyan-400 flex items-center justify-center shadow-md">
                     <MessageCircle className="w-6 h-6 text-white" />
@@ -132,42 +176,61 @@ export const HeroSection = () => {
                   </div>
                 </div>
 
-                {/* Chat-style Composer */}
-                <form
-                  onSubmit={handleAskAI}
-                  className="space-y-3"
-                  aria-label="Start a conversation with SehatBeat AI"
-                >
-                  <div className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 sm:px-4 sm:py-3 shadow-sm flex items-center gap-3">
-                    <Input
-                      type="text"
-                      aria-label={t("home.aiCardPlaceholder")}
-                      placeholder={t("home.aiCardPlaceholder")}
-                      value={chatQuestion}
-                      onChange={(e) => setChatQuestion(e.target.value)}
-                      className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
-                    />
-                    {/* Desktop / tablet button */}
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="hidden sm:inline-flex h-11 px-5 rounded-xl bg-gradient-primary text-primary-foreground shadow-strong hover:shadow-medium transition-all duration-300 hover:scale-[1.02] whitespace-nowrap"
-                    >
-                      {t("home.getStarted")} →
-                    </Button>
-                    {/* Mobile icon-only button */}
-                    <Button
-                      type="submit"
-                      size="icon"
-                      className="inline-flex sm:hidden h-10 w-10 rounded-full bg-gradient-primary text-primary-foreground shadow-strong hover:shadow-medium transition-all duration-300"
-                      aria-label="Ask SehatBeat AI"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                    </Button>
-                  </div>
-                </form>
+                {/* Single pill input — trigger only: dispatches sehatbeat-open-ai */}
+                <div className="bg-white border border-gray-200 shadow-lg rounded-full px-4 py-3 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 rounded-full flex-shrink-0 bg-teal-500 text-white hover:bg-teal-600"
+                    onClick={() => openAIWithMessage(voiceInput)}
+                    aria-label="Send to AI"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                  <Input
+                    type="text"
+                    value={voiceInput}
+                    onChange={(e) => setVoiceInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        openAIWithMessage(voiceInput);
+                      }
+                    }}
+                    placeholder={t("home.heroSymptomsPlaceholder")}
+                    className="flex-1 border-0 bg-transparent px-2 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                    aria-label={t("home.heroSymptomsPlaceholder")}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={`h-9 w-9 rounded-full flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-500 text-white hover:bg-teal-600"}`}
+                    onClick={() => {
+                      const rec = recognitionRef.current;
+                      if (!rec) return;
+                      try {
+                        if (isListening) {
+                          rec.stop();
+                          setIsListening(false);
+                        } else {
+                          rec.start();
+                          setIsListening(true);
+                        }
+                      } catch {
+                        setIsListening(false);
+                      }
+                    }}
+                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                  >
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </Button>
+                </div>
+                {isListening && (
+                  <p className="text-center text-sm text-red-500 animate-pulse">Listening...</p>
+                )}
 
-                {/* Suggested Prompts */}
                 <div className="space-y-2">
                   <p className="text-xs md:text-sm text-muted-foreground">
                     {t("home.aiCardTryAsking")}
@@ -186,7 +249,6 @@ export const HeroSection = () => {
                   </div>
                 </div>
 
-                {/* Demo Button */}
                 <div className="pt-1">
                   <Button
                     type="button"
@@ -288,11 +350,6 @@ export const HeroSection = () => {
         </div>
       )}
 
-      {/* Global AI Chatbot Modal */}
-      <AIChatbot
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-      />
     </section>
   );
 };

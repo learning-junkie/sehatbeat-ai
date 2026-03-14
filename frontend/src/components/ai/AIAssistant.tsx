@@ -34,7 +34,7 @@ interface StructuredResponse {
 
 interface Message {
   id: string;
-  type: "user" | "bot";
+  type: "user" | "bot" | "system";
   content: string;
   timestamp: Date;
   isThinking?: boolean;
@@ -88,22 +88,15 @@ async function callNextSymptomAPI(
   history: { role: string; content: string }[] = []
 ): Promise<StructuredResponse> {
   const backendBase =
-    typeof import.meta !== "undefined" && import.meta.env?.VITE_BACKEND_URL
-      ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, "")
-      : "";
+    (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_BACKEND_URL
+      ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
+      : "") || "http://localhost:3000";
 
-  if (!backendBase) {
-    console.warn(
-      "[SehatBeat] VITE_BACKEND_URL is not set — API calls may fail. Check your .env file."
-    );
-  }
-
-  const url = backendBase
-    ? `${backendBase}/api/analyze-symptoms`
-    : "/api/analyze-symptoms";
+  const url = `${backendBase}/api/analyze-symptoms`;
+  console.log("🚀 Fetching:", url);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   try {
     const res = await fetch(url, {
@@ -176,11 +169,20 @@ async function callNextSymptomAPI(
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(
         language === "hi"
-          ? "विश्लेषण समय सीमा पार। कृपया कनेक्शन जांचें और फिर कोशिश करें।"
-          : "Analysis timed out. Please check your connection and try again."
+          ? "AI को जवाब देने में समय लग रहा है। कृपया पुनः प्रयास करें।"
+          : "AI is taking longer than usual. Please try again."
+      );
+    }
+    if (error instanceof TypeError && (error.message === "Failed to fetch" || error.message.includes("fetch"))) {
+      throw new Error(
+        language === "hi"
+          ? "सर्वर से कनेक्ट नहीं हो पाया। कृपया जांचें कि बैकएंड चल रहा है (localhost:3000)।"
+          : "Could not reach the server. Ensure the backend is running at http://localhost:3000."
       );
     }
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -463,7 +465,22 @@ export const AIAssistant = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  
+
+  // Language switch with chat notice injection
+  const handleLanguageSwitch = (newLang: "en" | "hi") => {
+    if (newLang === language) return;
+    setLanguage(newLang);
+    try { window.localStorage?.setItem("sehatbeat_lang", newLang); } catch { /* ignore */ }
+    const noticeText =
+      newLang === "hi"
+        ? "🌐 Switched to Hindi. Future responses will be in Hindi."
+        : "🌐 Switched to English. Future responses will be in English.";
+    setMessages(prev => [
+      ...prev,
+      { id: `system-${Date.now()}`, type: "system", content: noticeText, timestamp: new Date() },
+    ]);
+  };
+
   // Note: `language` state + `setLanguage` now come from LanguageContext
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -825,29 +842,25 @@ export const AIAssistant = () => {
                 <div className="flex items-center gap-1 mt-0.5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setLanguage("en");
-                      try { window.localStorage?.setItem("sehatbeat_lang", "en"); } catch { /* ignore */ }
-                    }}
-                    className={`px-2 py-0.5 rounded-full text-[10px] border ${
+                    onClick={() => handleLanguageSwitch("en")}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
                       language === "en"
-                        ? "bg-white text-blue-700 border-white"
-                        : "bg-white/10 text-white border-white/40"
+                        ? "bg-white text-blue-700 border-white shadow-sm scale-105"
+                        : "bg-white/10 text-white/70 border-white/30 hover:text-white hover:bg-white/20"
                     }`}
+                    aria-pressed={language === "en"}
                   >
                     🇬🇧 English
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setLanguage("hi");
-                      try { window.localStorage?.setItem("sehatbeat_lang", "hi"); } catch { /* ignore */ }
-                    }}
-                    className={`px-2 py-0.5 rounded-full text-[10px] border ${
+                    onClick={() => handleLanguageSwitch("hi")}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
                       language === "hi"
-                        ? "bg-white text-blue-700 border-white"
-                        : "bg-white/10 text-white border-white/40"
+                        ? "bg-white text-blue-700 border-white shadow-sm scale-105"
+                        : "bg-white/10 text-white/70 border-white/30 hover:text-white hover:bg-white/20"
                     }`}
+                    aria-pressed={language === "hi"}
                   >
                     🇮🇳 हिन्दी
                   </button>
@@ -888,7 +901,19 @@ export const AIAssistant = () => {
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-3 space-y-4">
-                {messages.map(msg => (
+                {messages.map(msg => {
+                  // ── System notice (language switch) ──
+                  if (msg.type === "system") {
+                    return (
+                      <div key={msg.id} className="flex justify-center my-1">
+                        <span className="text-[11px] text-gray-400 bg-gray-100 dark:bg-gray-800 dark:text-gray-500 rounded-full px-3 py-1 italic">
+                          {msg.content}
+                        </span>
+                      </div>
+                    );
+                  }
+                  // ── User / bot bubble ──
+                  return (
                   <div key={msg.id} className={`flex items-start gap-2.5 ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
                     {/* Show small avatar for bot on mobile (hidden on sm+ where left column shows) */}
                     <div className={`sm:hidden w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${msg.type === "bot" ? "" : "bg-secondary"}`}>
@@ -930,7 +955,8 @@ export const AIAssistant = () => {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 <div ref={bottomRef} />
               </div>
 
