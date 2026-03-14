@@ -31,12 +31,25 @@ interface Reminder {
   notified?: boolean;
 }
 
-const reminders: Reminder[] = [
+const getTypeLabel = (type: Reminder["type"], t: (key: string) => string) => {
+  switch (type) {
+    case "medicine":
+      return t("reminders.typeMedicine");
+    case "lab-test":
+      return t("reminders.typeLabTest");
+    case "appointment":
+      return t("reminders.typeAppointment");
+    default:
+      return t("common.info");
+  }
+};
+
+const getDefaultReminders = (t: (key: string) => string): Reminder[] => [
   {
     id: '1',
-    title: 'Take Paracetamol',
+    title: t("reminders.sample1Title"),
     type: 'medicine',
-    description: '500mg after breakfast',
+    description: t("reminders.sample1Desc"),
     datetime: '2024-01-16T09:00',
     recurring: true,
     completed: false,
@@ -44,9 +57,9 @@ const reminders: Reminder[] = [
   },
   {
     id: '2',
-    title: 'Blood Test',
+    title: t("reminders.sample2Title"),
     type: 'lab-test',
-    description: 'Complete blood count at PathLab',
+    description: t("reminders.sample2Desc"),
     datetime: '2024-01-18T10:30',
     recurring: false,
     completed: false,
@@ -54,9 +67,9 @@ const reminders: Reminder[] = [
   },
   {
     id: '3',
-    title: 'Dr. Sharma Appointment',
+    title: t("reminders.sample3Title"),
     type: 'appointment',
-    description: 'Regular checkup with cardiologist',
+    description: t("reminders.sample3Desc"),
     datetime: '2024-01-20T15:00',
     recurring: false,
     completed: false,
@@ -66,7 +79,7 @@ const reminders: Reminder[] = [
 
 const Reminders = () => {
   const { t } = useLanguage();
-  const [activeReminders, setActiveReminders] = useState<Reminder[]>(reminders);
+  const [activeReminders, setActiveReminders] = useState<Reminder[]>(() => getDefaultReminders(t));
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newReminder, setNewReminder] = useState({
@@ -93,13 +106,13 @@ const Reminders = () => {
 
         // Fire when within a 1s window around the scheduled time
         if (!r.notified && Math.abs(diff) <= 1000) {
-          const title = `Reminder: ${r.title}`;
-          const body = `${r.type.replace('-', ' ')} • ${r.description || ''}`.trim();
+          const title = `${t("reminders.reminderPrefix")} ${r.title}`;
+          const body = `${getTypeLabel(r.type, t)} • ${r.description || ''}`.trim();
 
           if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === 'granted') {
             try { new Notification(title, { body }); } catch {}
           } else {
-            toast({ title, description: body || 'It\'s time!' });
+            toast({ title, description: body || t("reminders.itsTime") });
           }
 
           if (r.recurring) {
@@ -254,36 +267,36 @@ const Reminders = () => {
         {showAddForm && (
           <Card className="mb-8 border-primary/20">
             <CardHeader>
-              <CardTitle>{editingId ? 'Edit Reminder' : 'Create New Reminder'}</CardTitle>
+              <CardTitle>{editingId ? t('reminders.editReminder') : t('reminders.createNew')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">{t('reminders.titleLabel')}</Label>
                   <Input
                     id="title"
                     value={newReminder.title}
                     onChange={(e) => setNewReminder(prev => ({...prev, title: e.target.value}))}
-                    placeholder="e.g., Take Vitamin D"
+                    placeholder={t('reminders.titlePlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="type">Type</Label>
+                  <Label htmlFor="type">{t('reminders.typeLabel')}</Label>
                   <select
                     id="type"
                     value={newReminder.type}
                     onChange={(e) => setNewReminder(prev => ({...prev, type: e.target.value as any}))}
                     className="w-full px-3 py-2 border border-border rounded-md bg-background"
                   >
-                    <option value="medicine">Medicine</option>
-                    <option value="lab-test">Lab Test</option>
-                    <option value="appointment">Appointment</option>
+                    <option value="medicine">{t('reminders.typeMedicine')}</option>
+                    <option value="lab-test">{t('reminders.typeLabTest')}</option>
+                    <option value="appointment">{t('reminders.typeAppointment')}</option>
                   </select>
                 </div>
               </div>
               
               <div>
-                <Label htmlFor="datetime">Date & Time</Label>
+                <Label htmlFor="datetime">{t('reminders.dateTime')}</Label>
                 <Input
                   id="datetime"
                   type="datetime-local"
@@ -293,12 +306,12 @@ const Reminders = () => {
               </div>
 
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('reminders.description')}</Label>
                 <Textarea
                   id="description"
                   value={newReminder.description}
                   onChange={(e) => setNewReminder(prev => ({...prev, description: e.target.value}))}
-                  placeholder="Additional details..."
+                  placeholder={t('reminders.descriptionPlaceholder')}
                   rows={3}
                 />
               </div>
@@ -311,15 +324,15 @@ const Reminders = () => {
                   onChange={(e) => setNewReminder(prev => ({...prev, recurring: e.target.checked}))}
                   className="rounded"
                 />
-                <Label htmlFor="recurring">Recurring reminder</Label>
+                <Label htmlFor="recurring">{t('reminders.recurring')}</Label>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button onClick={handleSubmitReminder} className="bg-primary text-primary-foreground">
-                  {editingId ? 'Update Reminder' : 'Create Reminder'}
+                  {editingId ? t('reminders.updateReminder') : t('reminders.createReminder')}
                 </Button>
                 <Button variant="outline" onClick={() => { setShowAddForm(false); resetForm(); }}>
-                  Cancel
+                  {t('reminders.cancel')}
                 </Button>
               </div>
             </CardContent>
@@ -351,11 +364,11 @@ const Reminders = () => {
                             {reminder.title}
                           </h3>
                           <Badge variant="outline" className="text-xs capitalize">
-                            {reminder.type.replace('-', ' ')}
+                            {getTypeLabel(reminder.type, t)}
                           </Badge>
                           {reminder.recurring && (
                             <Badge variant="secondary" className="text-xs">
-                              Recurring
+                              {t('reminders.recurringBadge')}
                             </Badge>
                           )}
                         </div>
@@ -428,8 +441,8 @@ const Reminders = () => {
         {activeReminders.length === 0 && (
           <div className="text-center py-12">
             <Bell className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-lg">No reminders yet</p>
-            <p className="text-muted-foreground">Create your first reminder to get started</p>
+            <p className="text-muted-foreground text-lg">{t('reminders.noReminders')}</p>
+            <p className="text-muted-foreground">{t('reminders.noRemindersHint')}</p>
           </div>
         )}
       </div>

@@ -184,7 +184,7 @@ export const HeroSection = () => {
                     variant="ghost"
                     className="h-9 w-9 rounded-full flex-shrink-0 bg-teal-500 text-white hover:bg-teal-600"
                     onClick={() => openAIWithMessage(voiceInput)}
-                    aria-label="Send to AI"
+                    aria-label={t("ai.sendButton")}
                   >
                     <Send className="w-4 h-4" />
                   </Button>
@@ -222,13 +222,13 @@ export const HeroSection = () => {
                         setIsListening(false);
                       }
                     }}
-                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                    aria-label={isListening ? t("ai.stopListening") : t("ai.startVoiceInput")}
                   >
                     {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </Button>
                 </div>
                 {isListening && (
-                  <p className="text-center text-sm text-red-500 animate-pulse">Listening...</p>
+                  <p className="text-center text-sm text-red-500 animate-pulse">{t("ai.listening")}</p>
                 )}
 
                 <div className="space-y-2">
@@ -328,12 +328,12 @@ export const HeroSection = () => {
                 id="sehatbeat-demo-title"
                 className="text-sm font-medium text-foreground"
               >
-                SehatBeat AI – Demo
+                {t("home.watchDemo")}
               </h2>
               <button
                 type="button"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Close demo video"
+                aria-label={t("common.close")}
                 onClick={() => setIsDemoOpen(false)}
               >
                 ×

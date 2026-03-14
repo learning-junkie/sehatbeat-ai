@@ -189,11 +189,11 @@ async function callNextSymptomAPI(
 // ─── Severity styles ────────────────────────────────────────────────────────────
 
 const SEV_CONFIG = {
-  emergency: { border: "border-red-500",    bg: "bg-red-50 dark:bg-red-950/30",       badge: "bg-red-100 text-red-800",       icon: AlertOctagon,  label: "🚨 EMERGENCY", color: "text-red-600"    },
-  high:      { border: "border-orange-500", bg: "bg-orange-50 dark:bg-orange-950/30", badge: "bg-orange-100 text-orange-800", icon: AlertCircle,   label: "⚠️ URGENT",    color: "text-orange-600" },
-  moderate:  { border: "border-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950/30", badge: "bg-yellow-100 text-yellow-800", icon: AlertTriangle, label: "⚠️ MODERATE",  color: "text-yellow-600" },
-  mild:      { border: "border-green-500",  bg: "bg-green-50 dark:bg-green-950/30",   badge: "bg-green-100 text-green-800",   icon: CheckCircle,   label: "✅ MILD",       color: "text-green-600"  },
-  info:      { border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30",     badge: "bg-blue-100 text-blue-800",     icon: Info,          label: "ℹ️ INFO",       color: "text-blue-600"   },
+  emergency: { border: "border-red-500",    bg: "bg-red-50 dark:bg-red-950/30",       badge: "bg-red-100 text-red-800",       icon: AlertOctagon,  color: "text-red-600"    },
+  high:      { border: "border-orange-500", bg: "bg-orange-50 dark:bg-orange-950/30", badge: "bg-orange-100 text-orange-800", icon: AlertCircle,   color: "text-orange-600" },
+  moderate:  { border: "border-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950/30", badge: "bg-yellow-100 text-yellow-800", icon: AlertTriangle, color: "text-yellow-600" },
+  mild:      { border: "border-green-500",  bg: "bg-green-50 dark:bg-green-950/30",   badge: "bg-green-100 text-green-800",   icon: CheckCircle,   color: "text-green-600"  },
+  info:      { border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30",     badge: "bg-blue-100 text-blue-800",     icon: Info,          color: "text-blue-600"   },
 } as const;
 
 // ─── Structured card ────────────────────────────────────────────────────────────
@@ -201,7 +201,17 @@ const SEV_CONFIG = {
 function StructuredCard({ data, language }: { data: StructuredResponse; language: AppLanguage }) {
   const cfg = SEV_CONFIG[data.severityLevel] ?? SEV_CONFIG.info;
   const SevIcon = cfg.icon;
-  const isHi = language === "hi";
+  const { t } = useLanguage();
+  const severityLabel =
+    data.severityLevel === "emergency"
+      ? `🚨 ${t("ai.severity.emergency")}`
+      : data.severityLevel === "high"
+        ? `⚠️ ${t("ai.severity.high")}`
+        : data.severityLevel === "moderate"
+          ? `⚠️ ${t("ai.severity.moderate")}`
+          : data.severityLevel === "mild"
+            ? `✅ ${t("ai.severity.mild")}`
+            : `ℹ️ ${t("ai.severity.info")}`;
 
   // FIX 2 — Emergency audio + browser notification
   useEffect(() => {
@@ -218,10 +228,10 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
     // Browser notification
     try {
       if (Notification.permission === "granted") {
-        new Notification("🚨 EMERGENCY", { body: "Call 112 immediately or go to nearest hospital" });
+        new Notification(`🚨 ${t("ai.severity.emergency")}`, { body: t("ai.call112NowMessage") });
       } else if (Notification.permission !== "denied") {
         Notification.requestPermission().then(p => {
-          if (p === "granted") new Notification("🚨 EMERGENCY", { body: "Call 112 immediately or go to nearest hospital" });
+          if (p === "granted") new Notification(`🚨 ${t("ai.severity.emergency")}`, { body: t("ai.call112NowMessage") });
         });
       }
     } catch { /* ignore */ }
@@ -236,7 +246,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
             <Activity className={`w-4 h-4 flex-shrink-0 ${cfg.color}`} />
             <span className="font-bold text-foreground">{data.problem}</span>
           </div>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${cfg.badge}`}>{severityLabel}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-1.5">
           <SevIcon className={`w-3.5 h-3.5 flex-shrink-0 ${cfg.color}`} />
@@ -249,20 +259,20 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
         <div className="bg-red-600 text-white rounded-xl p-4 flex flex-col gap-3 border-2 border-red-400 animate-pulse">
           <div className="flex items-center gap-2">
             <AlertOctagon className="w-6 h-6 flex-shrink-0" />
-            <p className="font-black text-base tracking-wide">🚨 MEDICAL EMERGENCY DETECTED</p>
+            <p className="font-black text-base tracking-wide">🚨 {t('ai.emergency')}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <a
               href="tel:112"
               className="flex items-center gap-1.5 bg-white text-red-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
             >
-              <Phone className="w-4 h-4" /> 📞 Call 112 Now
+              <Phone className="w-4 h-4" /> 📞 {t('ai.call112')}
             </a>
             <button
               onClick={() => window.open("https://www.google.com/maps/search/nearest+emergency+hospital+india", "_blank", "noopener,noreferrer")}
               className="flex items-center gap-1.5 bg-red-800 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-red-900 transition-colors flex-shrink-0"
             >
-              <MapPin className="w-4 h-4" /> 🏥 Find Nearest Hospital
+              <MapPin className="w-4 h-4" /> 🏥 {t('ai.findHospital')}
             </button>
           </div>
         </div>
@@ -271,12 +281,12 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
       {/* FIX 2 — High severity banner */}
       {data.severityLevel === "high" && (
         <div className="bg-orange-500 text-white rounded-xl p-3 flex flex-col gap-2 border border-orange-300">
-          <p className="font-bold text-sm">⚠️ You should see a doctor urgently</p>
+          <p className="font-bold text-sm">⚠️ {t('ai.card.seeDoctor')}</p>
           <button
             onClick={() => window.open(`https://www.google.com/maps/search/nearest+${encodeURIComponent(data.specialist || "doctor")}+doctor+india`, "_blank", "noopener,noreferrer")}
             className="flex items-center gap-1.5 bg-white text-orange-700 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors w-fit"
           >
-            <MapPin className="w-3.5 h-3.5" /> 🗺️ Find Nearest {data.specialist || "Doctor"}
+            <MapPin className="w-3.5 h-3.5" /> 🗺️ {t('ai.card.findOnMaps')} {data.specialist || "Doctor"} {t('ai.card.onMaps')}
           </button>
         </div>
       )}
@@ -287,7 +297,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
           <MapPin className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-[11px] font-semibold text-red-700 dark:text-red-300 uppercase tracking-wide mb-1">
-              See a Doctor Now
+              {t('ai.card.seeDoctor')}
             </p>
             <p className="text-xs text-foreground">{data.doctorDirection}</p>
             {/* Google Maps link */}
@@ -301,7 +311,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
               }
               className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-red-600 underline hover:text-red-800"
             >
-              <MapPin className="w-3 h-3" /> Find nearest {data.specialist || "doctor"} on Maps
+              <MapPin className="w-3 h-3" /> {t('ai.card.findOnMaps')} {data.specialist || "doctor"} {t('ai.card.onMaps')}
             </button>
           </div>
         </div>
@@ -311,7 +321,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
       {data.possibleConditions && data.possibleConditions.length > 0 && (
         <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-1.5">
-            {isHi ? "संभावित बीमारियां" : "Possible Conditions"}
+            {t('ai.card.possibleConditions')}
           </p>
           {data.possibleConditions.map((c, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
@@ -325,7 +335,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
       {/* Possible causes */}
       {data.possibleCauses.length > 0 && (
         <div className="bg-muted/60 rounded-lg p-3">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{isHi ? "संभावित कारण" : "Possible Causes"}</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t('ai.card.possibleCauses')}</p>
           {data.possibleCauses.map((c, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
               <span className="text-primary font-bold flex-shrink-0 mt-0.5">•</span>
@@ -339,7 +349,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
       {data.immediateSteps.length > 0 && (
         <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-            <Pill className="w-3 h-3" /> {isHi ? "तुरंत करें" : "Immediate Steps"}
+            <Pill className="w-3 h-3" /> {t('ai.card.immediateSteps')}
           </p>
           {data.immediateSteps.map((s, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
@@ -354,7 +364,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
       {data.whenToSeekHelp.length > 0 && (
         <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
           <p className="text-[11px] font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> {isHi ? "डॉक्टर के पास कब जाएं" : "See a Doctor If..."}
+            <AlertTriangle className="w-3 h-3" /> {t('ai.card.whenToSeeDoctor')}
           </p>
           {data.whenToSeekHelp.map((w, i) => (
             <div key={i} className="flex items-start gap-2 mt-1">
@@ -370,7 +380,7 @@ function StructuredCard({ data, language }: { data: StructuredResponse; language
         <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
           <Stethoscope className="w-4 h-4 text-purple-600 flex-shrink-0" />
           <div>
-            <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">{isHi ? "अनुशंसित विशेषज्ञ" : "Recommended Specialist"}</p>
+            <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300">{t('ai.card.specialist')}</p>
             <p className="text-xs text-foreground">{data.specialist}</p>
           </div>
         </div>
@@ -399,22 +409,22 @@ const SUGGESTIONS_HI = [
   "गले में खराश और खांसी है",
 ];
 
-const WELCOME_DATA: StructuredResponse = {
-  problem: "Welcome to SehatBeat AI",
-  severity: "Your personal AI health companion — powered by Gemini 1.5 Flash",
+const getWelcomeData = (t: (key: string) => string): StructuredResponse => ({
+  problem: t("ai.welcomeProblem"),
+  severity: t("ai.welcomeSeverity"),
   severityLevel: "info",
   possibleCauses: [],
   possibleConditions: [],
   immediateSteps: [
-    "Describe your symptoms in detail for accurate analysis",
-    "Ask about any medicine, condition, or health concern",
-    "Get instant triage and specialist recommendations",
+    t("ai.welcomeStep1"),
+    t("ai.welcomeStep2"),
+    t("ai.welcomeStep3"),
   ],
   whenToSeekHelp: [],
   specialist: "N/A",
   doctorDirection: "",
-  disclaimer: "I provide informational guidance only. Always consult a licensed doctor for diagnosis and treatment.",
-};
+  disclaimer: t("ai.card.infoDisclaimer"),
+});
 
 function savePendingQuery(query: string) {
   if (typeof window === "undefined" || typeof localStorage === "undefined") return;
@@ -460,7 +470,7 @@ export const AIAssistant = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: "welcome", type: "bot", content: "", timestamp: new Date(), structuredData: WELCOME_DATA },
+    { id: "welcome", type: "bot", content: "", timestamp: new Date(), structuredData: getWelcomeData(t) },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -475,8 +485,8 @@ export const AIAssistant = () => {
     try { window.localStorage?.setItem("sehatbeat_lang", newLang); } catch { /* ignore */ }
     const noticeText =
       newLang === "hi"
-        ? "🌐 Switched to Hindi. Future responses will be in Hindi."
-        : "🌐 Switched to English. Future responses will be in English.";
+        ? t("ai.switchedToHindi")
+        : t("ai.switchedToEnglish");
     setMessages(prev => [
       ...prev,
       { id: `system-${Date.now()}`, type: "system", content: noticeText, timestamp: new Date() },
@@ -898,7 +908,7 @@ export const AIAssistant = () => {
                 <div className="flex items-center justify-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
                   <span className="text-[9px] text-muted-foreground font-medium">
-                    {isOnline ? "Online" : "Offline"}
+                    {isOnline ? t("common.online") : t("common.offline")}
                   </span>
                 </div>
                 {/* TTS toggle button */}
@@ -917,7 +927,7 @@ export const AIAssistant = () => {
                     )}
                     <button
                       type="button"
-                      aria-label={isVoiceEnabled ? "Turn voice off" : "Turn voice on"}
+                      aria-label={isVoiceEnabled ? t("ai.turnVoiceOff") : t("ai.turnVoiceOn")}
                       onClick={() => {
                         if (isVoiceEnabled) {
                           window.speechSynthesis.cancel();
@@ -944,7 +954,7 @@ export const AIAssistant = () => {
                     </button>
                   </div>
                   <span className="text-[8px] font-medium" style={{ color: isVoiceEnabled ? (isSpeaking ? "#6366f1" : "#6366f1") : "#9ca3af" }}>
-                    {isSpeaking ? "Speaking..." : isVoiceEnabled ? "Voice On" : "Voice Off"}
+                    {isSpeaking ? t("ai.speaking") : isVoiceEnabled ? t("ai.voiceOn") : t("ai.voiceOff")}
                   </span>
                 </div>
               </div>
@@ -1058,7 +1068,7 @@ export const AIAssistant = () => {
                         setIsListening(false);
                       }
                     }}
-                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                    aria-label={isListening ? t("ai.stopListening") : t("ai.startVoiceInput")}
                   >
                     {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </Button>
@@ -1072,11 +1082,7 @@ export const AIAssistant = () => {
                         sendMessage();
                       }
                     }}
-                    placeholder={
-                      isListening
-                        ? language === "hi" ? "सुन रहा है..." : "Listening..."
-                        : language === "hi" ? "अपने लक्षण बताएं..." : "Describe your symptoms..."
-                    }
+                    placeholder={isListening ? t("ai.listening") : t("ai.placeholder")}
                     disabled={isLoading}
                     className="flex-1 text-sm rounded-full h-9 px-4"
                   />
@@ -1091,14 +1097,12 @@ export const AIAssistant = () => {
                 </div>
                 {isListening && (
                   <p className="text-[11px] text-red-500 mt-1.5 text-center animate-pulse">
-                    🎤 {language === "hi" ? "बोलिए..." : "Speak now..."}
+                    🎤 {t("ai.speakNow")}
                   </p>
                 )}
                 <p className="text-center text-[11px] text-muted-foreground mt-2 flex items-center justify-center gap-1">
                   <MessageCircle className="w-3 h-3" />
-                  {language === "hi"
-                    ? "यह पेशेवर चिकित्सा सलाह का विकल्प नहीं है"
-                    : "Not a substitute for professional medical advice"}
+                  {t("ai.disclaimer")}
                 </p>
               </div>
             </div>{/* end right column */}

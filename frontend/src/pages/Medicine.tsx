@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const categories = ['All', 'Pain Relief', 'Vitamins', 'Digestive Health', 'Antibiotics', 'Allergy'];
+const categoryValues = ["All", "Pain Relief", "Vitamins", "Digestive Health", "Antibiotics", "Allergy"] as const;
 
 type GeminiMedicine = {
   name: string;
@@ -86,6 +86,15 @@ const Medicine = () => {
 
   const [geminiMedicines, setGeminiMedicines] = useState<ReturnType<typeof mapGeminiToDisplay>[] | null>(null);
   const [geminiLoading, setGeminiLoading] = useState(false);
+
+  const categoryLabelByValue: Record<string, string> = {
+    All: t("medicine.categoryAll"),
+    "Pain Relief": t("medicine.categoryPainRelief"),
+    Vitamins: t("medicine.categoryVitamins"),
+    "Digestive Health": t("medicine.categoryDigestiveHealth"),
+    Antibiotics: t("medicine.categoryAntibiotics"),
+    Allergy: t("medicine.categoryAllergy"),
+  };
 
   const convexMedicines = useMedicines(
     selectedCategory === "All" ? undefined : selectedCategory,
@@ -221,14 +230,14 @@ const Medicine = () => {
       const medicine = baseMedicines.find(m => m._id === medicineId);
       
       toast({
-        title: "Added to Cart!",
-        description: `${medicine?.name || 'Medicine'} has been added to your cart.`,
+        title: t('medicine.addedToCart'),
+        description: `${medicine?.name || t('medicine.title')} ${t('medicine.addedToCartDesc')}`,
         duration: 3000,
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to add item to cart. Please try again.",
+        title: t('common.error'),
+        description: t('medicine.failedAdd'),
         variant: "destructive",
         duration: 3000,
       });
@@ -240,14 +249,14 @@ const Medicine = () => {
       await removeItemFromCart(cartItemId);
       
       toast({
-        title: "Removed from Cart",
-        description: "Item has been removed from your cart.",
+        title: t('medicine.removedFromCart'),
+        description: t('medicine.itemRemoved'),
         duration: 3000,
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to remove item from cart. Please try again.",
+        title: t('common.error'),
+        description: t('medicine.failedRemove'),
         variant: "destructive",
         duration: 3000,
       });
@@ -260,21 +269,21 @@ const Medicine = () => {
       
       if (quantity === 0) {
         toast({
-          title: "Removed from Cart",
-          description: "Item has been removed from your cart.",
+          title: t('medicine.removedFromCart'),
+          description: t('medicine.itemRemoved'),
           duration: 3000,
         });
       } else {
         toast({
-          title: "Cart Updated",
-          description: `Quantity updated to ${quantity}.`,
+          title: t('medicine.cartUpdated'),
+          description: `${t('medicine.quantityUpdated')} ${quantity}.`,
           duration: 2000,
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update quantity. Please try again.",
+        title: t('common.error'),
+        description: t('medicine.failedUpdate'),
         variant: "destructive",
         duration: 3000,
       });
@@ -320,7 +329,7 @@ const Medicine = () => {
           </div>
           <div className="flex flex-col items-center justify-center py-24">
             <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-            <p className="text-muted-foreground">Loading medicines...</p>
+            <p className="text-muted-foreground">{t('medicine.loading')}</p>
           </div>
         </div>
       </div>
@@ -346,7 +355,7 @@ const Medicine = () => {
         {/* Offline indicator */}
         {!isOnline && (
           <div className="mb-6 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
-            You appear to be offline. Some updates or live prices may not be available.
+            {t('medicine.offline')}
           </div>
         )}
 
@@ -368,14 +377,14 @@ const Medicine = () => {
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search medicines (you can also use voice)..."
+              placeholder={t('medicine.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-10"
             />
             <button
               type="button"
-              aria-label={isVoiceSearching ? "Stop voice search" : "Start voice search"}
+              aria-label={isVoiceSearching ? t("medicine.stopVoiceSearch") : t("medicine.startVoiceSearch")}
               className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 border text-muted-foreground bg-background hover:bg-muted transition-colors ${
                 isVoiceSearching ? "bg-red-500 text-white border-red-500 hover:bg-red-600" : ""
               }`}
@@ -383,8 +392,8 @@ const Medicine = () => {
                 const rec = searchRecognitionRef.current;
                 if (!rec) {
                   toast({
-                    title: "Voice search not supported",
-                    description: "Your browser does not support speech recognition.",
+                    title: t("medicine.voiceSearchNotSupported"),
+                    description: t("medicine.voiceSearchNotSupportedDesc"),
                   });
                   return;
                 }
@@ -406,7 +415,7 @@ const Medicine = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
-            {categories.map((category) => (
+            {categoryValues.map((category) => (
               <Button
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
@@ -414,7 +423,7 @@ const Medicine = () => {
                 onClick={() => setSelectedCategory(category)}
                 className={selectedCategory === category ? "bg-primary text-primary-foreground" : ""}
               >
-                {category}
+                {categoryLabelByValue[category] || category}
               </Button>
             ))}
           </div>
@@ -424,7 +433,7 @@ const Medicine = () => {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <SlidersHorizontal className="w-4 h-4" />
-                <span>Filters</span>
+                <span>{t('medicine.filters')}</span>
               </div>
               <Button
                 type="button"
@@ -432,7 +441,7 @@ const Medicine = () => {
                 size="sm"
                 onClick={() => setInStockOnly((prev) => !prev)}
               >
-                In stock only
+                {t('medicine.inStockOnly')}
               </Button>
               <Button
                 type="button"
@@ -440,12 +449,12 @@ const Medicine = () => {
                 size="sm"
                 onClick={() => setPrescriptionOnly((prev) => !prev)}
               >
-                Prescription only
+                {t('medicine.prescriptionOnly')}
               </Button>
             </div>
 
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Sort by</span>
+              <span className="text-muted-foreground">{t('medicine.sortBy')}</span>
               <select
                 value={sortBy}
                 onChange={(e) =>
@@ -453,9 +462,9 @@ const Medicine = () => {
                 }
                 className="border border-input bg-background rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="relevance">Relevance</option>
-                <option value="priceLowHigh">Price: Low to High</option>
-                <option value="priceHighLow">Price: High to Low</option>
+                <option value="relevance">{t('medicine.relevance')}</option>
+                <option value="priceLowHigh">{t('medicine.priceLowHigh')}</option>
+                <option value="priceHighLow">{t('medicine.priceHighLow')}</option>
               </select>
             </div>
           </div>
@@ -469,7 +478,7 @@ const Medicine = () => {
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="w-5 h-5 text-primary" />
                   <span className="font-medium text-primary">
-                    {getTotalItems()} items in cart
+                    {getTotalItems()} {t('medicine.itemsInCart')}
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -477,7 +486,7 @@ const Medicine = () => {
                     ${getTotalPrice().toFixed(2)}
                   </span>
                   <Button className="bg-gradient-primary text-primary-foreground shadow-medium hover:shadow-strong">
-                    Checkout
+                    {t('medicine.checkout')}
                   </Button>
                 </div>
               </div>
@@ -488,13 +497,13 @@ const Medicine = () => {
         {/* Results summary */}
         {filteredMedicines.length > 0 && (
           <div className="mb-4 text-sm text-muted-foreground">
-            Showing{" "}
+            {t("medicine.showing")}{" "}
             <span className="font-semibold text-foreground">
               {filteredMedicines.length}
             </span>{" "}
-            medicines
-            {inStockOnly && " • In stock only"}
-            {prescriptionOnly && " • Prescription only"}
+            {t("medicine.medicines")}
+            {inStockOnly && ` • ${t("medicine.inStockOnly")}`}
+            {prescriptionOnly && ` • ${t("medicine.prescriptionOnly")}`}
           </div>
         )}
 
@@ -506,22 +515,17 @@ const Medicine = () => {
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                   <ShoppingCart className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No Medicines Found</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('medicine.noMedicinesFound')}</h3>
                 <p className="text-muted-foreground mb-4">
-                  {searchTerm || selectedCategory !== "All" 
-                    ? `No medicines match your search "${searchTerm}" in category "${selectedCategory}"`
-                    : "The medicine catalog is empty. This usually means the database hasn't been seeded yet."
+                  {searchTerm || selectedCategory !== "All"
+                    ? `${t('medicine.noMedicinesMatch')} "${searchTerm}" ${t('medicine.inCategory')} "${categoryLabelByValue[selectedCategory] || selectedCategory}"`
+                    : t('medicine.catalogEmpty')
                   }
                 </p>
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    To get started, you can:
-                  </p>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Try a different search term</li>
-                    <li>• Select a different category</li>
-                    <li>• Run the database seed function</li>
-                    <li>• Check your Convex backend connection</li>
+                    <li>• {t('medicine.tryDifferentSearch')}</li>
+                    <li>• {t('medicine.selectDifferentCategory')}</li>
                   </ul>
                 </div>
               </div>
@@ -546,7 +550,7 @@ const Medicine = () => {
                         className="w-full h-full object-cover rounded-lg"
                       />
                     ) : (
-                      <div className="text-muted-foreground text-sm">No Image</div>
+                      <div className="text-muted-foreground text-sm">{t("medicine.noImage")}</div>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -559,7 +563,7 @@ const Medicine = () => {
                     <p className="text-sm text-muted-foreground">{medicine.description}</p>
                     {medicine.genericName && (
                       <p className="text-xs text-muted-foreground">
-                        Generic: {medicine.genericName}
+                        {t("medicine.generic")}: {medicine.genericName}
                       </p>
                     )}
                     <div className="flex items-center gap-1">
@@ -576,9 +580,9 @@ const Medicine = () => {
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Truck className="w-3 h-3" />
-                      <span>Free delivery</span>
+                      <span>{t('medicine.freeDelivery')}</span>
                       <Shield className="w-3 h-3 ml-2" />
-                      <span>Verified</span>
+                      <span>{t('medicine.verified')}</span>
                     </div>
 
                     {medicine.inStock ? (
@@ -613,14 +617,14 @@ const Medicine = () => {
                             disabled={!isSignedIn}
                           >
                             <Plus className="w-4 h-4 mr-2" />
-                            Add to Cart
+                            {t('medicine.addToCart')}
                           </Button>
                         )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-destructive">
                         <Clock className="w-4 h-4" />
-                        <span className="text-sm">Out of Stock</span>
+                        <span className="text-sm">{t('medicine.outOfStock')}</span>
                       </div>
                     )}
                   </div>
@@ -632,15 +636,17 @@ const Medicine = () => {
 
         {filteredMedicines.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No medicines found matching your criteria.</p>
+            <p className="text-muted-foreground">
+            {t('medicine.noResults')}
+          </p>
           </div>
         )}
 
         {!isSignedIn && (
           <div className="mt-8 text-center">
             <p className="text-muted-foreground">
-              Please sign in to add items to your cart.
-            </p>
+            {t('medicine.signInToAdd')}
+          </p>
           </div>
         )}
       </div>

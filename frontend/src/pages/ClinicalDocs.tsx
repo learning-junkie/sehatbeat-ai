@@ -27,8 +27,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 // import { useMutation as useConvexMutation } from "convex/react";
 import EnhancedClinicalDocsUploadModal from "@/components/EnhancedClinicalDocsUploadModal";
 import AIPDFReader from "@/components/AIPDFReader";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ClinicalDocs = () => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
 
@@ -240,7 +242,7 @@ const ClinicalDocs = () => {
   };
 
   const handleDeleteDocument = async (docId: string) => {
-    if (confirm("Are you sure you want to delete this document?")) {
+    if (confirm(t("clinical.confirmDelete"))) {
       try {
         const result = await deleteDoc(docId);
         if (result) {
@@ -333,7 +335,7 @@ const ClinicalDocs = () => {
       
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Upload failed. Please try again.");
+      alert(t("clinical.uploadFailed"));
     } finally {
       setIsUploading(false);
       setIsUploadModalOpen(false);
@@ -390,7 +392,7 @@ const ClinicalDocs = () => {
       
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Upload failed. Please try again.");
+      alert(t("clinical.uploadFailed"));
     } finally {
       setIsUploading(false);
       setIsUploadModalOpen(false);
@@ -512,13 +514,13 @@ const ClinicalDocs = () => {
   // Map enhanced modal categories to display categories
   const getDisplayCategory = (category: string) => {
     switch (category) {
-      case "lab_result": return "Lab Report";
-      case "medical_record": return "Medical Record";
-      case "prescription": return "Prescription";
-      case "insurance": return "Insurance";
-      case "id_document": return "ID Document";
-      case "Consultation": return "Medical Record"; // Legacy category mapping
-      case "Assessment": return "Prescription"; // Legacy category mapping
+      case "lab_result": return t("clinical.labReports");
+      case "medical_record": return t("clinical.medicalRecords");
+      case "prescription": return t("clinical.prescriptions");
+      case "insurance": return t("clinical.insurance");
+      case "id_document": return t("clinical.idDocuments");
+      case "Consultation": return t("clinical.medicalRecords"); // Legacy category mapping
+      case "Assessment": return t("clinical.prescriptions"); // Legacy category mapping
       default: return category; // Fallback for other categories
     }
   };
@@ -548,13 +550,13 @@ const ClinicalDocs = () => {
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-                Clinical Documentation
+                {t("clinical.title")}
                 <Badge className="bg-gradient-accent text-accent-foreground animate-pulse-soft">
-                  New Feature
+                  {t("clinical.newFeature")}
                 </Badge>
               </h1>
               <p className="text-muted-foreground">
-                Comprehensive clinical notes management with structured templates and secure sharing
+                {t("home.card6Desc")}
               </p>
             </div>
 
@@ -566,7 +568,7 @@ const ClinicalDocs = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search documents, doctors, or tags..."
+                placeholder={t("clinical.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -578,7 +580,7 @@ const ClinicalDocs = () => {
               onClick={() => setIsUploadModalOpen(true)}
             >
               <Upload className="w-4 h-4 mr-2" />
-              Upload Document
+              {t("clinical.upload")}
             </Button>
             {/* Enhanced Upload Modal */}
             <EnhancedClinicalDocsUploadModal
@@ -593,13 +595,13 @@ const ClinicalDocs = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="all">All Documents</TabsTrigger>
-            <TabsTrigger value="priority">⭐ Priority</TabsTrigger>
-            <TabsTrigger value="medical-record">Medical Records</TabsTrigger>
-            <TabsTrigger value="lab">Lab Reports</TabsTrigger>
-            <TabsTrigger value="prescription">Prescriptions</TabsTrigger>
-            <TabsTrigger value="insurance" disabled className="opacity-50 cursor-not-allowed">Insurance 🔒</TabsTrigger>
-            <TabsTrigger value="id-document" disabled className="opacity-50 cursor-not-allowed">ID Documents 🔒</TabsTrigger>
+            <TabsTrigger value="all">{t("clinical.allDocuments")}</TabsTrigger>
+            <TabsTrigger value="priority">⭐ {t("clinical.priority")}</TabsTrigger>
+            <TabsTrigger value="medical-record">{t("clinical.medicalRecords")}</TabsTrigger>
+            <TabsTrigger value="lab">{t("clinical.labReports")}</TabsTrigger>
+            <TabsTrigger value="prescription">{t("clinical.prescriptions")}</TabsTrigger>
+            <TabsTrigger value="insurance" disabled className="opacity-50 cursor-not-allowed">{t("clinical.insurance")} 🔒</TabsTrigger>
+            <TabsTrigger value="id-document" disabled className="opacity-50 cursor-not-allowed">{t("clinical.idDocuments")} 🔒</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
@@ -612,7 +614,7 @@ const ClinicalDocs = () => {
                       <p className="text-2xl font-bold text-accent">
                         {clinicalDocsStats?.totalDocuments || 0}
                       </p>
-                      <p className="text-sm text-muted-foreground">Total Documents</p>
+                      <p className="text-sm text-muted-foreground">{t("clinical.totalDocuments")}</p>
                     </div>
                     <FileText className="w-8 h-8 text-accent/60" />
                   </div>
@@ -626,7 +628,7 @@ const ClinicalDocs = () => {
                       <p className="text-2xl font-bold text-foreground">
                         {clinicalDocsStats?.thisMonth || 0}
                       </p>
-                      <p className="text-sm text-muted-foreground">This Month</p>
+                      <p className="text-sm text-muted-foreground">{t("clinical.thisMonth")}</p>
                     </div>
                     <Calendar className="w-8 h-8 text-primary/60" />
                   </div>
@@ -640,7 +642,7 @@ const ClinicalDocs = () => {
                       <p className="text-2xl font-bold text-foreground">
                         {Object.keys(clinicalDocsStats?.byCategory || {}).length}
                       </p>
-                      <p className="text-sm text-muted-foreground">Categories</p>
+                      <p className="text-sm text-muted-foreground">{t("clinical.categories")}</p>
                     </div>
                     <User className="w-8 h-8 text-secondary/60" />
                   </div>
@@ -654,7 +656,7 @@ const ClinicalDocs = () => {
                       <p className="text-2xl font-bold text-foreground">
                         {clinicalDocsStats?.priorityItems || 0}
                       </p>
-                      <p className="text-sm text-muted-foreground">Priority Items</p>
+                      <p className="text-sm text-muted-foreground">{t("clinical.priorityItems")}</p>
                     </div>
                     <Star className="w-8 h-8 text-white/80" />
                   </div>
@@ -667,9 +669,9 @@ const ClinicalDocs = () => {
               {filteredDocs.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t("clinical.noDocuments")}</h3>
                   <p className="text-muted-foreground mb-4">
-                    {searchTerm ? `No documents match "${searchTerm}"` : "Create your first clinical document to get started."}
+                    {searchTerm ? `${t("clinical.noDocumentsMatch")} "${searchTerm}"` : t("clinical.createFirstDocument")}
                   </p>
 
                 </div>
@@ -742,7 +744,7 @@ const ClinicalDocs = () => {
                                   return (
                                     <div key={index} className="border rounded-lg p-3 bg-gray-50">
                                       <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-700">PDF Document</span>
+                                        <span className="text-sm font-medium text-gray-700">{t("clinical.pdfDocument")}</span>
                                         <div className="flex items-center gap-2">
                                           <Button
                                             variant="outline"
@@ -750,7 +752,7 @@ const ClinicalDocs = () => {
                                             onClick={() => togglePdfPreview(`${doc._id}-${index}`)}
                                             className="text-xs px-2 py-1 h-7"
                                           >
-                                            {pdfPreviewStates[`${doc._id}-${index}`] ? 'Hide Preview' : 'Show Preview'}
+                                            {pdfPreviewStates[`${doc._id}-${index}`] ? t("clinical.hidePreview") : t("clinical.showPreview")}
                                           </Button>
                                           <a 
                                             href={attachment} 
@@ -758,7 +760,7 @@ const ClinicalDocs = () => {
                                             rel="noopener noreferrer"
                                             className="text-blue-600 hover:text-blue-800 text-sm underline"
                                           >
-                                            Open PDF
+                                            {t("clinical.openPdf")}
                                           </a>
                                         </div>
                                       </div>
@@ -766,14 +768,14 @@ const ClinicalDocs = () => {
                                       {pdfPreviewStates[`${doc._id}-${index}`] && (
                                         <div className="w-full h-64 bg-muted border rounded flex flex-col items-center justify-center gap-2 p-4">
                                           <FileText className="w-12 h-12 text-muted-foreground" />
-                                          <p className="text-sm text-muted-foreground text-center">PDF preview</p>
+                                          <p className="text-sm text-muted-foreground text-center">{t("clinical.pdfPreview")}</p>
                                           <a
                                             href={attachment}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-blue-600 hover:underline text-sm"
                                           >
-                                            Open in new tab
+                                            {t("clinical.openInNewTab")}
                                           </a>
                                         </div>
                                       )}
@@ -790,7 +792,7 @@ const ClinicalDocs = () => {
                                           className="text-blue-600 hover:text-blue-800 text-sm underline flex items-center gap-1"
                                         >
                                           <FileText className="w-4 h-4" />
-                                          Download Attachment
+                                          {t("clinical.downloadAttachment")}
                                         </a>
                                     </div>
                                   );
@@ -825,8 +827,8 @@ const ClinicalDocs = () => {
             {filteredDocs.filter(doc => doc.priority).length === 0 ? (
               <div className="text-center py-12">
                 <Star className="w-16 h-16 mx-auto text-yellow-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No priority documents</h3>
-                <p className="text-muted-foreground mb-4">Mark documents as priority to see them here.</p>
+                <h3 className="text-lg font-semibold mb-2">{t("clinical.noPriorityDocuments")}</h3>
+                <p className="text-muted-foreground mb-4">{t("clinical.markPriorityHint")}</p>
               </div>
             ) : (
               filteredDocs.filter(doc => doc.priority).map((doc) => (
@@ -891,7 +893,7 @@ const ClinicalDocs = () => {
                                 return (
                                   <div key={index} className="border rounded-lg p-3 bg-gray-50">
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-700">PDF Document</span>
+                                      <span className="text-sm font-medium text-gray-700">{t("clinical.pdfDocument")}</span>
                                       <div className="flex items-center gap-2">
                                         <Button
                                           variant="outline"
@@ -899,7 +901,7 @@ const ClinicalDocs = () => {
                                           onClick={() => togglePdfPreview(`${doc._id}-${index}`)}
                                           className="text-xs px-2 py-1 h-7"
                                         >
-                                          {pdfPreviewStates[`${doc._id}-${index}`] ? 'Hide Preview' : 'Show Preview'}
+                                          {pdfPreviewStates[`${doc._id}-${index}`] ? t("clinical.hidePreview") : t("clinical.showPreview")}
                                         </Button>
                                         <a 
                                           href={attachment} 
@@ -907,7 +909,7 @@ const ClinicalDocs = () => {
                                           rel="noopener noreferrer"
                                           className="text-blue-600 hover:text-blue-800 text-sm underline"
                                         >
-                                          Open PDF
+                                          {t("clinical.openPdf")}
                                         </a>
                                       </div>
                                     </div>
@@ -915,14 +917,14 @@ const ClinicalDocs = () => {
                                     {pdfPreviewStates[`${doc._id}-${index}`] && (
                                       <div className="w-full h-64 bg-muted border rounded flex flex-col items-center justify-center gap-2 p-4">
                                         <FileText className="w-12 h-12 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground text-center">PDF preview</p>
+                                        <p className="text-sm text-muted-foreground text-center">{t("clinical.pdfPreview")}</p>
                                         <a
                                           href={attachment}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="text-blue-600 hover:underline text-sm"
                                         >
-                                          Open in new tab
+                                          {t("clinical.openInNewTab")}
                                         </a>
                                       </div>
                                     )}
@@ -939,7 +941,7 @@ const ClinicalDocs = () => {
                                       className="text-blue-600 hover:text-blue-800 text-sm underline flex items-center gap-1"
                                     >
                                       <FileText className="w-5 h-5" />
-                                      Download Attachment
+                                      {t("clinical.downloadAttachment")}
                                     </a>
                                   </div>
                                 );
@@ -970,8 +972,8 @@ const ClinicalDocs = () => {
             {medicalRecordDocs.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No medical record documents</h3>
-                <p className="text-muted-foreground mb-4">Create your first medical record document to get started.</p>
+                <h3 className="text-lg font-semibold mb-2">{t("clinical.noMedicalRecordDocuments")}</h3>
+                <p className="text-muted-foreground mb-4">{t("clinical.createFirstMedicalRecord")}</p>
 
               </div>
             ) : (
@@ -1032,8 +1034,8 @@ const ClinicalDocs = () => {
             {labDocs.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No lab reports</h3>
-                <p className="text-muted-foreground mb-4">Create your lab reports for easy access and tracking.</p>
+                <h3 className="text-lg font-semibold mb-2">{t("clinical.noLabReports")}</h3>
+                <p className="text-muted-foreground mb-4">{t("clinical.createLabReportsHint")}</p>
 
               </div>
             ) : (
@@ -1094,8 +1096,8 @@ const ClinicalDocs = () => {
             {prescriptionDocs.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No prescription documents</h3>
-                <p className="text-muted-foreground mb-4">Prescription documents will appear here once created.</p>
+                <h3 className="text-lg font-semibold mb-2">{t("clinical.noPrescriptionDocuments")}</h3>
+                <p className="text-muted-foreground mb-4">{t("clinical.prescriptionHint")}</p>
 
               </div>
             ) : (
@@ -1163,7 +1165,7 @@ const ClinicalDocs = () => {
                                 return (
                                   <div key={index} className="border rounded-lg p-3 bg-gray-50">
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-700">PDF Document</span>
+                                      <span className="text-sm font-medium text-gray-700">{t("clinical.pdfDocument")}</span>
                                       <div className="flex items-center gap-2">
                                         <Button
                                           variant="outline"
@@ -1171,7 +1173,7 @@ const ClinicalDocs = () => {
                                           onClick={() => togglePdfPreview(`${doc._id}-${index}`)}
                                           className="text-xs px-2 py-1 h-7"
                                         >
-                                          {pdfPreviewStates[`${doc._id}-${index}`] ? 'Hide Preview' : 'Show Preview'}
+                                          {pdfPreviewStates[`${doc._id}-${index}`] ? t("clinical.hidePreview") : t("clinical.showPreview")}
                                         </Button>
                                         <a 
                                           href={attachment} 
@@ -1179,7 +1181,7 @@ const ClinicalDocs = () => {
                                           rel="noopener noreferrer"
                                           className="text-blue-600 hover:text-blue-800 text-sm underline"
                                         >
-                                          Open PDF
+                                          {t("clinical.openPdf")}
                                         </a>
                                       </div>
                                     </div>
@@ -1187,14 +1189,14 @@ const ClinicalDocs = () => {
                                     {pdfPreviewStates[`${doc._id}-${index}`] && (
                                       <div className="w-full h-64 bg-muted border rounded flex flex-col items-center justify-center gap-2 p-4">
                                         <FileText className="w-12 h-12 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground text-center">PDF preview</p>
+                                        <p className="text-sm text-muted-foreground text-center">{t("clinical.pdfPreview")}</p>
                                         <a
                                           href={attachment}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="text-blue-600 hover:underline text-sm"
                                         >
-                                          Open in new tab
+                                          {t("clinical.openInNewTab")}
                                         </a>
                                       </div>
                                     )}
@@ -1211,7 +1213,7 @@ const ClinicalDocs = () => {
                                       className="text-blue-600 hover:text-blue-800 text-sm underline flex items-center gap-1"
                                     >
                                       <FileText className="w-4 h-4" />
-                                      Download Attachment
+                                      {t("clinical.downloadAttachment")}
                                     </a>
                                   </div>
                                 );
@@ -1266,8 +1268,7 @@ const ClinicalDocs = () => {
               <Brain className="w-16 h-16 mx-auto text-blue-600 mb-4" />
               <h3 className="text-2xl font-bold text-gray-900 mb-4">AI-Powered PDF Analysis</h3>
               <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                Upload any PDF document and let our AI analyze it for you. Get instant summaries, 
-                key points, and insights from your clinical documents.
+                {t("clinical.aiAnalysisDescription")}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -1292,7 +1293,7 @@ const ClinicalDocs = () => {
                   >
                     <label htmlFor="ai-pdf-upload">
                       <Brain className="w-5 h-5 mr-2" />
-                      Upload & Analyze PDF
+                      {t("clinical.uploadAnalyzePdf")}
                     </label>
                   </Button>
                 </div>
@@ -1304,7 +1305,7 @@ const ClinicalDocs = () => {
                   onClick={() => setActiveTab("all")}
                 >
                   <FileText className="w-5 h-5 mr-2" />
-                  View All Documents
+                  {t("common.viewAll")}
                 </Button>
               </div>
             </div>
@@ -1316,9 +1317,9 @@ const ClinicalDocs = () => {
               <div className="w-16 h-16 mx-auto text-gray-400 mb-4 flex items-center justify-center">
                 <span className="text-4xl">🛡️</span>
               </div>
-              <h3 className="text-2xl font-bold text-gray-400 mb-4">Insurance Documents</h3>
+              <h3 className="text-2xl font-bold text-gray-400 mb-4">{t("clinical.insurance")}</h3>
               <p className="text-gray-500 mb-6 max-w-2xl mx-auto">
-                This feature is coming soon! Insurance document management will be available in a future update.
+                {t("clinical.insuranceComingSoon")}
               </p>
             </div>
           </TabsContent>
@@ -1329,9 +1330,9 @@ const ClinicalDocs = () => {
               <div className="w-16 h-16 mx-auto text-gray-400 mb-4 flex items-center justify-center">
                 <span className="text-4xl">🆔</span>
               </div>
-              <h3 className="text-2xl font-bold text-gray-400 mb-4">ID Documents</h3>
+              <h3 className="text-2xl font-bold text-gray-400 mb-4">{t("clinical.idDocuments")}</h3>
               <p className="text-gray-500 mb-6 max-w-2xl mx-auto">
-                This feature is coming soon! ID document management will be available in a future update.
+                {t("clinical.idDocsComingSoon")}
               </p>
             </div>
           </TabsContent>
@@ -1344,7 +1345,7 @@ const ClinicalDocs = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-blue-600" />
-              AI PDF Analysis
+              {t("clinical.aiPdfAnalysis")}
             </DialogTitle>
           </DialogHeader>
           <AIPDFReader 
@@ -1360,54 +1361,54 @@ const ClinicalDocs = () => {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Clinical Document</DialogTitle>
+            <DialogTitle>{t("clinical.editDocument")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-title">Title</Label>
+              <Label htmlFor="edit-title">{t("reminders.titleLabel")}</Label>
               <Input
                 id="edit-title"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Enter document title"
+                placeholder={t("clinical.enterDocumentTitle")}
               />
             </div>
             <div>
-              <Label htmlFor="edit-category">Category</Label>
+              <Label htmlFor="edit-category">{t("clinical.category")}</Label>
               <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("clinical.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="medical_record"> Medical Record</SelectItem>
-                  <SelectItem value="lab_result"> Lab Report</SelectItem>
-                  <SelectItem value="prescription"> Prescription</SelectItem>
-                  <SelectItem value="insurance" disabled>Insurance 🔒</SelectItem>
-                  <SelectItem value="id_document" disabled>ID Document 🔒</SelectItem>
+                  <SelectItem value="medical_record"> {t("clinical.medicalRecords")}</SelectItem>
+                  <SelectItem value="lab_result"> {t("clinical.labReports")}</SelectItem>
+                  <SelectItem value="prescription"> {t("clinical.prescriptions")}</SelectItem>
+                  <SelectItem value="insurance" disabled>{t("clinical.insurance")} 🔒</SelectItem>
+                  <SelectItem value="id_document" disabled>{t("clinical.idDocuments")} 🔒</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="edit-content">Content</Label>
+              <Label htmlFor="edit-content">{t("clinical.content")}</Label>
               <Textarea
                 id="edit-content"
                 value={formData.content}
                 onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Enter document content"
+                placeholder={t("clinical.enterDocumentContent")}
                 rows={6}
               />
             </div>
             <div>
-              <Label htmlFor="edit-tags">Tags</Label>
+              <Label htmlFor="edit-tags">{t("clinical.tags")}</Label>
               <div className="flex gap-2">
                 <Input
                   id="edit-tags"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="Add tags"
+                  placeholder={t("clinical.addTags")}
                   onKeyPress={(e) => e.key === 'Enter' && addTag()}
                 />
-                <Button type="button" onClick={addTag} variant="outline">Add</Button>
+                <Button type="button" onClick={addTag} variant="outline">{t("common.add")}</Button>
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.tags.map((tag, index) => (
@@ -1425,7 +1426,7 @@ const ClinicalDocs = () => {
                 checked={formData.priority}
                 onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.checked }))}
               />
-              <Label htmlFor="edit-priority">Priority document</Label>
+              <Label htmlFor="edit-priority">{t("clinical.priorityDocument")}</Label>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => {
@@ -1434,13 +1435,13 @@ const ClinicalDocs = () => {
                 setEditingDoc(null);
                 resetForm();
               }}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button onClick={() => {
                 console.log("Update button clicked");
                 handleEditDocument();
               }}>
-                Update Document
+                {t("clinical.updateDocument")}
               </Button>
             </div>
           </div>

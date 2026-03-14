@@ -12,6 +12,11 @@ interface FeatureCardProps {
   comingSoon?: boolean;
   href?: string;
   stats?: string;
+  // featureKey is the stable English identifier used for routing
+  featureKey?: "Medicine Ordering" | "Smart Reminders" | "Lab Tests" | "Doctor Directory" | "SehatBeat AI Checker" | "Clinical Documentation";
+  buttonLabel?: string;
+  comingSoonLabel?: string;
+  newLabel?: string;
 }
 
 export const FeatureCard = ({ 
@@ -21,7 +26,11 @@ export const FeatureCard = ({
   isHighlighted = false, 
   comingSoon = false,
   href,
-  stats
+  stats,
+  featureKey,
+  buttonLabel = "Get Started",
+  comingSoonLabel = "Coming Soon",
+  newLabel = "New",
 }: FeatureCardProps) => {
   const navigate = useNavigate();
   
@@ -29,14 +38,13 @@ export const FeatureCard = ({
     ? "border-accent bg-gradient-to-br from-accent-soft to-background shadow-strong hover:shadow-accent/20 ring-2 ring-accent/20"
     : "hover:shadow-medium transition-all duration-300 hover:-translate-y-1";
 
-  // Check if this is Lab Tests or Doctor Directory to show Coming Soon
-  const isComingSoon = comingSoon || title === "Lab Tests" || title === "Doctor Directory";
+  // Use stable featureKey for routing instead of translated title
+  const isComingSoon = comingSoon || featureKey === "Lab Tests" || featureKey === "Doctor Directory";
 
-  // Handle navigation based on feature type
   const handleNavigation = () => {
     if (isComingSoon) return;
     
-    switch (title) {
+    switch (featureKey) {
       case "Medicine Ordering":
         navigate("/medicine");
         break;
@@ -61,7 +69,7 @@ export const FeatureCard = ({
       {isHighlighted && (
         <div className="absolute top-0 right-0">
           <Badge className="bg-gradient-accent text-accent-foreground rounded-l-none rounded-br-none animate-pulse-soft">
-            New
+            {newLabel}
           </Badge>
         </div>
       )}
@@ -92,7 +100,7 @@ export const FeatureCard = ({
             variant="outline" 
             className="w-full border-2 border-muted-foreground text-muted-foreground hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-300"
           >
-            Coming Soon
+            {comingSoonLabel}
           </Button>
         ) : (
           <Button 
@@ -103,7 +111,7 @@ export const FeatureCard = ({
             }`}
             onClick={handleNavigation}
           >
-            {isHighlighted ? "Explore Clinical Docs" : "Get Started"}
+            {buttonLabel}
           </Button>
         )}
       </CardContent>
