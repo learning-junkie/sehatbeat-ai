@@ -1,6 +1,7 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import type { NextFetchEvent } from 'next/server';
 
 const ALLOWED_ORIGINS = [
   'http://localhost:8080',
@@ -18,7 +19,7 @@ function corsHeaders(origin: string): Headers {
   return h;
 }
 
-export default function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest, evt: NextFetchEvent) {
   const pathname = req.nextUrl.pathname;
   if (pathname.startsWith('/api')) {
     const origin = req.headers.get('origin');
@@ -32,7 +33,7 @@ export default function middleware(req: NextRequest) {
       return res;
     }
   }
-  return clerkMiddleware()(req);
+  return clerkMiddleware()(req, evt);
 }
 
 export const config = {
