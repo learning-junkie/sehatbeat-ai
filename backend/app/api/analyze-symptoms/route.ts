@@ -2,171 +2,237 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let symptoms = "";
-  let isHindi = false;
+  let language = "en";
+  let pastHistory: { role: string; content: string }[] = [];
+
   try {
     const body = await req.json();
     symptoms = typeof body.symptoms === "string" ? body.symptoms : String(body.symptoms ?? "");
-    isHindi = body.language === "hi";
+    language = typeof body.language === "string" ? body.language : "en";
+    const rawHistory = Array.isArray(body.history) ? body.history : [];
+    pastHistory = rawHistory.slice(-10);
   } catch {
-    isHindi = false;
+    // keep defaults
   }
 
-  console.log("Gemini hit:", symptoms);
+  const isHindi = language === "hi";
+  console.log("[SehatBeat] symptoms:", symptoms.slice(0, 80), "| lang:", language);
 
-  const fallback = {
-    problem: isHindi ? "सेवा अनुपलब्ध" : "Service Unavailable",
-    severity: isHindi
-      ? "क्षमा करें, मैं केवल स्वास्थ्य संबंधी प्रश्नों में सहायता कर सकता हूं।"
-      : "Sorry, I can only help with health-related questions.",
-    severityLevel: "info",
-    possibleCauses: [],
-    possibleConditions: [],
-    immediateSteps: [],
-    recommendations: [],
-    whenToSeekHelp: [],
-    specialist: isHindi ? "सामान्य चिकित्सक" : "General Physician",
-    doctorDirection: "",
-    disclaimer: isHindi
-      ? "यह जानकारी केवल सामान्य मार्गदर्शन के लिए है।"
-      : "This is for informational purposes only.",
-  };
+  // ── System prompt ───────────────────────────────────────────────────────────
+  const systemPrompt = `You are SehatBeat AI, a compassionate medical assistant for patients in India.
 
-  try {
-  // ── System prompt ────────────────────────────────────────────────────────────
-  const criticalInstruction = `CRITICAL: Respond ONLY with valid JSON starting with { and ending with }. No markdown, no code fences, no explanation. No preamble.\n\n`;
+LANGUAGE RULE: Auto-detect the user's language and respond in the SAME language.
+- Hindi (Devanagari) → respond in Hindi
+- Romanized Hindi / Hinglish → respond in Hindi or English naturally
+- English → respond in English
 
-  const systemPrompt =
-    criticalInstruction +
-    (isHindi
-      ? `आप SehatBeat AI हैं — एक विशेषज्ञ, सहानुभूतिपूर्ण भारतीय चिकित्सा सहायक।
-नीचे दिए गए JSON प्रारूप में ही जवाब दें। JSON के बाहर कुछ भी मत लिखें।
-यदि उपयोगकर्ता ने गलत वर्तनी (typo) की है, तो उसे सुधार कर समझें।
+SCOPE: Help with any health question — symptoms, medications, conditions, nutrition, mental health, first aid, wellness.
+Accept casual phrasing: "I have a headache", "mujhe bukhar hai", "मुझे सिरदर्द है", "feeling tired".
+Do not be overly literal — understand intent. Accept typos: "faver"→fever, "hedache"→headache.
 
-JSON schema:
+OFF-TOPIC: Only if completely unrelated to health (e.g. sports, math, politics), respond:
+{"offTopic": true, "message": "${isHindi ? "मैं केवल स्वास्थ्य संबंधी प्रश्नों में सहायता कर सकता हूं।" : "I can only help with health-related questions."}"}
+
+FOR ALL HEALTH QUERIES: Respond ONLY with valid JSON — no markdown, no code fences, no preamble.
+
+JSON schema (respond in user's language):
 {
-  "problem": "संभावित स्वास्थ्य समस्या",
-  "severity": "गंभीरता का विस्तृत विवरण",
+  "problem": "condition name",
+  "severity": "detailed severity description",
   "severityLevel": "emergency | high | moderate | mild | info",
-  "possibleCauses": ["कारण 1", "कारण 2"],
-  "possibleConditions": ["संभावित बीमारी 1", "संभावित बीमारी 2"],
-  "immediateSteps": ["तुरंत करें 1", "तुरंत करें 2"],
-  "recommendations": ["सुझाव 1", "सुझाव 2"],
-  "whenToSeekHelp": ["यह होने पर डॉक्टर के पास जाएं"],
-  "specialist": "किस विशेषज्ञ से मिलें",
-  "doctorDirection": "डॉक्टर के पास कब और क्यों जाएं, कौन से टेस्ट करवाएं",
-  "disclaimer": "चिकित्सा अस्वीकरण"
-}
-
-severityLevel नियम:
-- emergency: सीने में दर्द, सांस न आना, बेहोशी, लकवा → doctorDirection में 112 और तुरंत अस्पताल लिखें
-- high: तेज बुखार, गंभीर दर्द → 24 घंटे में डॉक्टर
-- moderate: 2+ दिन से लक्षण → 3 दिन में डॉक्टर
-- mild: हल्के लक्षण → घरेलू उपाय पर्याप्त`
-      : `You are SehatBeat AI — an expert, empathetic Indian medical assistant.
-Respond ONLY in valid JSON matching the schema below. Nothing outside the JSON.
-If the user made a typo or spelling mistake in symptoms, intelligently correct and interpret it.
-Provide thorough, detailed medical analysis in English.
-
-JSON schema (all fields required):
-{
-  "problem": "Name of the likely health condition",
-  "severity": "Detailed severity description with clinical context",
-  "severityLevel": "emergency | high | moderate | mild | info",
-  "possibleCauses": ["Cause 1", "Cause 2", "Cause 3"],
-  "possibleConditions": ["Possible condition 1", "Possible condition 2"],
-  "immediateSteps": ["Step 1", "Step 2", "Step 3"],
-  "recommendations": ["Recommendation 1", "Recommendation 2"],
-  "whenToSeekHelp": ["Warning sign 1", "Warning sign 2"],
-  "specialist": "Specific type of specialist (e.g. Cardiologist, not just Doctor)",
-  "doctorDirection": "When and why to see a doctor, which tests to ask for (e.g. CBC, ECG, X-ray), what to tell the doctor",
-  "disclaimer": "Medical disclaimer"
+  "possibleCauses": ["cause 1", "cause 2"],
+  "possibleConditions": ["condition 1", "condition 2"],
+  "immediateSteps": ["step 1", "step 2"],
+  "recommendations": ["rec 1", "rec 2"],
+  "whenToSeekHelp": ["warning 1", "warning 2"],
+  "specialist": "specific specialist type",
+  "doctorDirection": "when/why to see a doctor, which tests to ask for",
+  "disclaimer": "medical disclaimer"
 }
 
 severityLevel rules:
-- emergency: chest pain, breathing difficulty, unconsciousness, stroke, severe bleeding → doctorDirection MUST say call 112 and go to nearest hospital NOW
-- high: fever >103F, severe pain, persistent vomiting → see doctor within 24 hours
-- moderate: symptoms 2+ days, worsening → see doctor within 3 days
-- mild: minor self-limiting symptoms → home remedies sufficient
+- emergency: chest pain, no breathing, unconsciousness → mention 112 in doctorDirection
+- high: fever >103°F, severe pain → see doctor within 24 hours
+- moderate: symptoms 2+ days → see doctor within 3 days
+- mild: minor symptoms → home remedies`;
 
-For doctorDirection always include: urgency timeline, specific tests to request, what to describe to doctor.
-For specialist be specific: Cardiologist, Pulmonologist, Gastroenterologist, ENT, Dermatologist, General Physician etc.
-Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache", "stomic" as "stomach" etc.`);
-
-  // ── Helper: parse AI JSON response ──────────────────────────────────────────
+  // ── Helper: parse AI JSON ───────────────────────────────────────────────────
   function parseAIResponse(raw: string) {
-    // Extract JSON even if Gemini wraps it in markdown fences or adds extra text
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : raw;
     const parsed = JSON.parse(jsonStr);
-    // Ensure recommendations mirrors immediateSteps for frontend compatibility
-    if (!parsed.recommendations && parsed.immediateSteps) {
-      parsed.recommendations = parsed.immediateSteps;
+
+    if (parsed.offTopic) {
+      return {
+        problem: isHindi ? "विषय से बाहर" : "Off-topic",
+        severity: parsed.message || (isHindi ? "मैं केवल स्वास्थ्य संबंधी प्रश्नों में सहायता कर सकता हूं।" : "I can only help with health questions."),
+        severityLevel: "info",
+        possibleCauses: [], possibleConditions: [], immediateSteps: [],
+        recommendations: [], whenToSeekHelp: [],
+        specialist: "N/A", doctorDirection: "", disclaimer: "",
+      };
     }
+
+    if (!parsed.recommendations && parsed.immediateSteps) parsed.recommendations = parsed.immediateSteps;
     if (!parsed.possibleConditions) parsed.possibleConditions = [];
     if (!parsed.doctorDirection) parsed.doctorDirection = "";
     return parsed;
   }
 
-  // ── Gemini 1.5 Flash ────────────────────────────────────────────────────────
+  // ── 1. Try Groq (free, fast, generous limits) ─────────────────────────────
+  const GROQ_KEY = process.env.GROQ_API_KEY;
+
+  if (GROQ_KEY) {
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GROQ_KEY}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(20000),
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...pastHistory,
+            { role: "user", content: symptoms },
+          ],
+          max_tokens: 1200,
+          temperature: 0.2,
+        }),
+      });
+
+      console.log("[Groq] Status:", groqRes.status);
+
+      if (groqRes.ok) {
+        const data = await groqRes.json();
+        const raw: string = data.choices?.[0]?.message?.content ?? "";
+        if (raw) {
+          try {
+            const parsed = parseAIResponse(raw);
+            console.log("[Groq] Success:", parsed.problem);
+            return NextResponse.json(parsed);
+          } catch {
+            console.error("[Groq] JSON parse failed. Raw:", raw.slice(0, 200));
+          }
+        }
+      } else {
+        const errText = await groqRes.text().catch(() => "");
+        console.error("[Groq] Error", groqRes.status, errText.slice(0, 200));
+      }
+    } catch (error) {
+      console.error("[Groq] Call failed:", (error as Error).message);
+    }
+  } else {
+    console.warn("[SehatBeat] GROQ_API_KEY not set");
+  }
+
+  // ── 2. Fallback: Gemini 2.5 Flash ─────────────────────────────────────────
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
   if (GEMINI_KEY) {
     try {
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(20000),
           body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `${systemPrompt}\n\nPatient reports: ${symptoms}`,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 1024,
-            },
+            contents: [{ parts: [{ text: `${systemPrompt}\n\nPatient reports: ${symptoms}` }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 1200 },
           }),
         }
       );
 
-      console.log("Gemini status:", geminiRes.status);
+      console.log("[Gemini] Status:", geminiRes.status);
 
-      if (!geminiRes.ok) {
-        const errorBody = await geminiRes.text().catch(() => "");
-        console.error(`[Gemini] Error ${geminiRes.status}:`, errorBody);
-        // Return static fallback instead of throwing — never return a 500
-        return NextResponse.json(fallback);
-      }
-
-      const geminiData = await geminiRes.json();
-      const raw: string =
-        geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-      if (raw) {
-        try {
-          const parsed = parseAIResponse(raw);
-          return NextResponse.json(parsed);
-        } catch {
-          // JSON parse failed — fall through to static fallback
-          console.error("[Gemini] JSON parse failed for raw:", raw.slice(0, 200));
+      if (geminiRes.ok) {
+        const geminiData = await geminiRes.json();
+        const raw: string = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        if (raw) {
+          try {
+            const parsed = parseAIResponse(raw);
+            console.log("[Gemini] Success:", parsed.problem);
+            return NextResponse.json(parsed);
+          } catch {
+            console.error("[Gemini] JSON parse failed. Raw:", raw.slice(0, 200));
+          }
         }
+      } else {
+        const errText = await geminiRes.text().catch(() => "");
+        console.error("[Gemini] Error", geminiRes.status, errText.slice(0, 200));
       }
     } catch (error) {
-      console.error("[Gemini] API call failed:", error);
-      // Gemini failed — fall through to static fallback
+      console.error("[Gemini] Call failed:", (error as Error).message);
+    }
+  } else {
+    console.warn("[SehatBeat] GEMINI_API_KEY not set");
+  }
+
+  // ── 3. Fallback: Perplexity ────────────────────────────────────────────────
+  const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
+
+  if (PERPLEXITY_KEY) {
+    try {
+      const response = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PERPLEXITY_KEY}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(20000),
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...pastHistory,
+            { role: "user", content: symptoms },
+          ],
+          max_tokens: 1200,
+        }),
+      });
+
+      console.log("[Perplexity] Status:", response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        const raw: string = data.choices?.[0]?.message?.content ?? "";
+        if (raw) {
+          try {
+            const parsed = parseAIResponse(raw);
+            console.log("[Perplexity] Success:", parsed.problem);
+            return NextResponse.json(parsed);
+          } catch {
+            return NextResponse.json({
+              problem: isHindi ? "लक्षण विश्लेषण" : "Symptom Analysis",
+              severity: raw,
+              severityLevel: "info",
+              possibleCauses: [], possibleConditions: [], immediateSteps: [],
+              recommendations: [], whenToSeekHelp: [],
+              specialist: isHindi ? "सामान्य चिकित्सक" : "General Physician",
+              doctorDirection: "",
+              disclaimer: isHindi ? "यह जानकारी केवल सामान्य मार्गदर्शन के लिए है।" : "This is for informational purposes only.",
+            });
+          }
+        }
+      } else {
+        const errText = await response.text().catch(() => "");
+        console.error("[Perplexity] Error", response.status, errText.slice(0, 100));
+      }
+    } catch (error) {
+      console.error("[Perplexity] Call failed:", (error as Error).message);
     }
   }
 
-  // ── Static fallback ──────────────────────────────────────────────────────────
-  return NextResponse.json(fallback);
-  } catch {
-    return NextResponse.json(fallback);
-  }
+  // ── No provider worked ─────────────────────────────────────────────────────
+  console.error("[SehatBeat] All AI providers failed or not configured");
+  return NextResponse.json(
+    {
+      error: "AI service unavailable",
+      hint: "Add GROQ_API_KEY to backend/.env.local — free at console.groq.com",
+    },
+    { status: 503 }
+  );
 }
