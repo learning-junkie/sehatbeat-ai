@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Bot } from "lucide-react";
-import avatarSrc from "@/assets/sehatbeat-avatar.png";
+
 
 type AvatarSize = "sm" | "md" | "lg";
 
@@ -60,8 +60,8 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
       {/* Avatar image or fallback */}
       {!imgError ? (
         <img
-          src={avatarSrc}
-          alt="SehatBeat AI Avatar"
+          src="/assets/doctor-avatar.png"
+          alt="SehatBeat AI Doctor"
           onError={() => setImgError(true)}
           className={[
             wrapper,

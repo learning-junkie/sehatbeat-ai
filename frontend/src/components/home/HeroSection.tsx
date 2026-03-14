@@ -5,15 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Activity, MessageCircle, PlayCircle, Shield, Users, Zap } from "lucide-react";
 import heroImage from "@/assets/medical.jpg";
 import AIChatbot from "@/components/AIChatbot";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const SUGGESTED_PROMPTS = [
-  "What could cause a persistent headache?",
-  "Remind me to take my medicine every day.",
-  "Check symptoms for fever and fatigue.",
-  "How to manage diabetes daily?"
+const getSuggestedPrompts = (t: (key: string) => string) => [
+  t("home.aiCardPrompt1"),
+  t("home.aiCardPrompt2"),
+  t("home.aiCardPrompt3"),
+  t("home.aiCardPrompt4")
 ];
 
 export const HeroSection = () => {
+  const { t } = useLanguage();
   const [chatQuestion, setChatQuestion] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isDemoOpen, setIsDemoOpen] = useState(false);
@@ -68,6 +70,11 @@ export const HeroSection = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isDemoOpen]);
 
+  const heroText = t("home.hero");
+  const heroParts = heroText.includes(",") ? heroText.split(",") : [heroText, ""];
+  const heroLine1 = heroParts[0].trim();
+  const heroLine2 = heroParts.slice(1).join(",").trim();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Overlay */}
@@ -81,24 +88,28 @@ export const HeroSection = () => {
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            {/* Left: Text Content */}
+            <div className="flex-1 text-center md:text-left space-y-8">
           {/* Badge */}
           <Badge className="bg-gradient-accent text-accent-foreground px-4 py-2 text-sm animate-float" variant="secondary">
             <Activity className="w-4 h-4 mr-2" />
-            Smart Medical Platform
+            {t("home.badge")}
           </Badge>
 
           {/* Main Heading */}
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              Your Health,
-              <span className="block text-transparent bg-clip-text bg-gradient-hero">
-                Simplified
-              </span>
+              {heroLine1}{heroLine2 ? "," : ""}
+              {heroLine2 && (
+                <span className="block text-transparent bg-clip-text bg-gradient-hero">
+                  {heroLine2}
+                </span>
+              )}
             </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            SehatBeat - Comprehensive healthcare management with smart reminders, symptom checking, 
-            medicine ordering, and clinical documentation in one secure platform.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto md:mx-0 leading-relaxed">
+            {t("home.heroSub")}
           </p>
           </div>
 
@@ -113,10 +124,10 @@ export const HeroSection = () => {
                   </div>
                   <div>
                     <h2 className="text-base md:text-lg font-semibold text-foreground">
-                      SehatBeat AI Assistant
+                      {t("ai.title")}
                     </h2>
                     <p className="mt-1 text-sm md:text-base text-muted-foreground">
-                      Ask anything about symptoms, medicines, or health reminders — get instant, AI-powered guidance.
+                      {t("home.aiCardSubtitle")}
                     </p>
                   </div>
                 </div>
@@ -130,8 +141,8 @@ export const HeroSection = () => {
                   <div className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 sm:px-4 sm:py-3 shadow-sm flex items-center gap-3">
                     <Input
                       type="text"
-                      aria-label="Ask SehatBeat AI about symptoms, medicines, or health reminders"
-                      placeholder="Ask about symptoms, medicines, or health reminders..."
+                      aria-label={t("home.aiCardPlaceholder")}
+                      placeholder={t("home.aiCardPlaceholder")}
                       value={chatQuestion}
                       onChange={(e) => setChatQuestion(e.target.value)}
                       className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
@@ -142,7 +153,7 @@ export const HeroSection = () => {
                       size="lg"
                       className="hidden sm:inline-flex h-11 px-5 rounded-xl bg-gradient-primary text-primary-foreground shadow-strong hover:shadow-medium transition-all duration-300 hover:scale-[1.02] whitespace-nowrap"
                     >
-                      Ask AI →
+                      {t("home.getStarted")} →
                     </Button>
                     {/* Mobile icon-only button */}
                     <Button
@@ -159,10 +170,10 @@ export const HeroSection = () => {
                 {/* Suggested Prompts */}
                 <div className="space-y-2">
                   <p className="text-xs md:text-sm text-muted-foreground">
-                    Try asking:
+                    {t("home.aiCardTryAsking")}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {SUGGESTED_PROMPTS.map((prompt) => (
+                    {getSuggestedPrompts(t).map((prompt) => (
                       <button
                         key={prompt}
                         type="button"
@@ -185,7 +196,7 @@ export const HeroSection = () => {
                     onClick={() => setIsDemoOpen(true)}
                   >
                     <PlayCircle className="w-5 h-5" />
-                    See How It Works
+                    {t("home.watchDemo")}
                   </Button>
                 </div>
               </div>
@@ -193,20 +204,41 @@ export const HeroSection = () => {
           </div>
 
           {/* Feature Pills */}
-          <div className="flex flex-wrap gap-6 justify-center items-center pt-8">
+          <div className="flex flex-wrap gap-6 justify-center md:justify-start items-center pt-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="w-4 h-4 text-secondary" />
-              <span>HIPAA Compliant</span>
+              <span>{t("home.statsCompliant")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="w-4 h-4 text-secondary" />
-              <span>10,000+ Patients</span>
+              <span>{t("home.statsPatients")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Zap className="w-4 h-4 text-secondary" />
-              <span>99.9% Uptime</span>
+              <span>{t("home.statsUptime")}</span>
             </div>
           </div>
+            </div>{/* end left column */}
+
+            {/* Right: Doctor Avatar */}
+            <div className="hidden md:flex flex-shrink-0 items-center justify-center">
+              <img
+                src="/assets/doctor-avatar.png"
+                alt="SehatBeat AI Doctor"
+                className="h-[420px] w-auto object-contain animate-float"
+                style={{ filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.15))" }}
+              />
+            </div>
+            {/* Mobile: show doctor avatar below text */}
+            <div className="flex md:hidden justify-center w-full">
+              <img
+                src="/assets/doctor-avatar.png"
+                alt="SehatBeat AI Doctor"
+                className="h-[280px] w-auto object-contain animate-float"
+                style={{ filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.15))" }}
+              />
+            </div>
+          </div>{/* end flex row */}
         </div>
       </div>
 
@@ -245,14 +277,12 @@ export const HeroSection = () => {
                 ×
               </button>
             </header>
-            <div className="aspect-video w-full bg-black">
-              <iframe
-                className="w-full h-full"
-                src="https://www.youtube.com/embed/VIDEO_ID"
-                title="SehatBeat AI Demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div className="aspect-video w-full bg-gradient-to-br from-blue-900 to-teal-900 flex flex-col items-center justify-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                <PlayCircle className="w-12 h-12 text-white/80" />
+              </div>
+              <p className="text-white font-semibold text-lg">Demo available at sehat-beat.vercel.app</p>
+              <p className="text-white/60 text-sm">Live demo coming soon</p>
             </div>
           </div>
         </div>

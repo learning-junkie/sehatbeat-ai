@@ -12,6 +12,7 @@ import {
   Clock,
   Users
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const features = [
   {
@@ -73,6 +74,7 @@ const trustFeatures = [
 ];
 
 const Index = () => {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -86,10 +88,10 @@ const Index = () => {
               🇮🇳 India's Health OS
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Complete Healthcare Management
+              {t("home.featuresTitle")}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to manage your health in one comprehensive platform
+              {t("home.featuresSub")}
             </p>
           </div>
 
@@ -110,7 +112,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Trusted Healthcare Platform
+              {t("home.trustTitle")}
             </h2>
             <p className="text-lg text-muted-foreground">
               Built with security, reliability, and your privacy in mind

@@ -18,6 +18,7 @@ import {
   Trash2,
   CheckCircle
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Reminder {
   id: string;
@@ -64,6 +65,7 @@ const reminders: Reminder[] = [
 ];
 
 const Reminders = () => {
+  const { t } = useLanguage();
   const [activeReminders, setActiveReminders] = useState<Reminder[]>(reminders);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -230,10 +232,10 @@ const Reminders = () => {
             <div className="p-3 bg-gradient-primary rounded-xl shadow-medium">
               <Bell className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-4xl font-bold text-foreground">Smart Reminders</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t("reminders.title")}</h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Never miss your medicines, lab tests, or doctor appointments
+            {t("reminders.subtitle")}
           </p>
         </div>
 
@@ -244,7 +246,7 @@ const Reminders = () => {
             className="bg-gradient-primary text-primary-foreground shadow-medium hover:shadow-strong"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add New Reminder
+            {t("reminders.addNew")}
           </Button>
         </div>
 

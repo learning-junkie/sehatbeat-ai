@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/hooks/useConvex";
 import { useAuth } from "@clerk/clerk-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Import Clerk components
 import {
@@ -37,13 +38,12 @@ const FallbackSignInButton = ({ children }: { children: React.ReactNode }) => (
   </Button>
 );
 
-const navigationItems = [
-  { name: "Home", path: "/", icon: Home },
-  { name: "Medicine", path: "/medicine", icon: ShoppingCart },
-  { name: "Reminders", path: "/reminders", icon: Bell },
-  { name: "SehatBeat AI", path: "/sehatbeat-ai", icon: Activity },
-
-  { name: "Clinical Docs", path: "/clinical-docs", icon: FileText, highlighted: true },
+const getNavigationItems = (t: (key: string) => string) => [
+  { name: t("nav.home"), path: "/", icon: Home },
+  { name: t("nav.medicine"), path: "/medicine", icon: ShoppingCart },
+  { name: t("nav.reminders"), path: "/reminders", icon: Bell },
+  { name: t("nav.sehatbeatAI"), path: "/sehatbeat-ai", icon: Activity },
+  { name: t("nav.doctors"), path: "/doctors", icon: FileText, highlighted: true },
 ];
 
 export const TopNavigation = () => {
@@ -51,6 +51,9 @@ export const TopNavigation = () => {
   const location = useLocation();
   const { isSignedIn } = useAuth();
   const { cartItems } = useCart();
+  const { t } = useLanguage();
+  
+  const navigationItems = getNavigationItems(t);
 
   const isActive = (path: string) => location.pathname === path;
   

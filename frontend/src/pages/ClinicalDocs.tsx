@@ -762,14 +762,19 @@ const ClinicalDocs = () => {
                                           </a>
                                         </div>
                                       </div>
-                                      {/* PDF Preview */}
+                                      {/* PDF Preview — placeholder to avoid cross-origin iframe issues */}
                                       {pdfPreviewStates[`${doc._id}-${index}`] && (
-                                        <div className="w-full h-64 bg-white border rounded overflow-hidden">
-                                          <iframe
-                                            src={attachment}
-                                            className="w-full h-full"
-                                            title="PDF Preview"
-                                          />
+                                        <div className="w-full h-64 bg-muted border rounded flex flex-col items-center justify-center gap-2 p-4">
+                                          <FileText className="w-12 h-12 text-muted-foreground" />
+                                          <p className="text-sm text-muted-foreground text-center">PDF preview</p>
+                                          <a
+                                            href={attachment}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:underline text-sm"
+                                          >
+                                            Open in new tab
+                                          </a>
                                         </div>
                                       )}
                                     </div>
@@ -906,14 +911,19 @@ const ClinicalDocs = () => {
                                         </a>
                                       </div>
                                     </div>
-                                    {/* PDF Preview */}
+                                    {/* PDF Preview — placeholder to avoid cross-origin iframe issues */}
                                     {pdfPreviewStates[`${doc._id}-${index}`] && (
-                                      <div className="w-full h-64 bg-white border rounded overflow-hidden">
-                                        <iframe
-                                          src={attachment}
-                                          className="w-full h-full"
-                                          title="PDF Preview"
-                                        />
+                                      <div className="w-full h-64 bg-muted border rounded flex flex-col items-center justify-center gap-2 p-4">
+                                        <FileText className="w-12 h-12 text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground text-center">PDF preview</p>
+                                        <a
+                                          href={attachment}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:underline text-sm"
+                                        >
+                                          Open in new tab
+                                        </a>
                                       </div>
                                     )}
                                   </div>
@@ -1173,14 +1183,19 @@ const ClinicalDocs = () => {
                                         </a>
                                       </div>
                                     </div>
-                                    {/* PDF Preview */}
+                                    {/* PDF Preview — placeholder to avoid cross-origin iframe issues */}
                                     {pdfPreviewStates[`${doc._id}-${index}`] && (
-                                      <div className="w-full h-64 bg-white border rounded overflow-hidden">
-                                        <iframe
-                                          src={attachment}
-                                          className="w-full h-full"
-                                          title="PDF Preview"
-                                        />
+                                      <div className="w-full h-64 bg-muted border rounded flex flex-col items-center justify-center gap-2 p-4">
+                                        <FileText className="w-12 h-12 text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground text-center">PDF preview</p>
+                                        <a
+                                          href={attachment}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:underline text-sm"
+                                        >
+                                          Open in new tab
+                                        </a>
                                       </div>
                                     )}
                                   </div>

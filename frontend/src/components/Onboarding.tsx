@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const DOCTOR_AVATAR_SRC = "/doctor-avatar.png"; // We can reuse this or simple icon
+const DOCTOR_AVATAR_SRC = "/assets/doctor-avatar.png"; // We can reuse this or simple icon
 
 export default function Onboarding() {
   const { setLanguage } = useLanguage();
