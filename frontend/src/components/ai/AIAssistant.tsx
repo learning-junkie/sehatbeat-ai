@@ -465,6 +465,8 @@ export const AIAssistant = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(false);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
   // Language switch with chat notice injection
   const handleLanguageSwitch = (newLang: "en" | "hi") => {
@@ -750,6 +752,7 @@ export const AIAssistant = () => {
   // Text-to-speech: speak latest bot message (structured or plain)
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") return;
+    if (!isVoiceEnabled) return;  // ── gated behind toggle
     if (!messages.length) return;
     const last = [...messages].reverse().find(m => m.type === "bot" && !m.isThinking);
     if (!last || last.id === "welcome") return;
@@ -775,6 +778,9 @@ export const AIAssistant = () => {
     utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
     utterance.rate = 0.95;
     utterance.pitch = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend   = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
 
     try {
       window.speechSynthesis.cancel();
@@ -782,7 +788,7 @@ export const AIAssistant = () => {
     } catch {
       // ignore speech synthesis errors
     }
-  }, [messages, language]);
+  }, [messages, language, isVoiceEnabled]);
 
   // ── Floating button ──────────────────────────────────────────────────────────
 
@@ -886,13 +892,59 @@ export const AIAssistant = () => {
 
             {/* Left avatar column — hidden on very small screens */}
             <div className="hidden sm:flex flex-col items-center justify-start pt-5 px-2 flex-shrink-0 w-[76px] border-r border-border/40 bg-gradient-to-b from-blue-50/60 to-teal-50/40 dark:from-blue-950/20 dark:to-teal-950/10">
-              <div className="sticky top-5">
+              <div className="sticky top-5 flex flex-col items-center gap-2">
                 <AIAvatar size="md" animated={true} />
                 {/* Online indicator dot */}
-                <div className="mt-2 flex items-center justify-center gap-1">
+                <div className="flex items-center justify-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
                   <span className="text-[9px] text-muted-foreground font-medium">
                     {isOnline ? "Online" : "Offline"}
+                  </span>
+                </div>
+                {/* TTS toggle button */}
+                <div className="flex flex-col items-center gap-0.5">
+                  <div className="relative">
+                    {/* Pulsing ring while speaking */}
+                    {isSpeaking && (
+                      <span
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          animation: "pulse-ring 1.2s ease-out infinite",
+                          backgroundColor: "#6366f1",
+                          opacity: 0.5,
+                        }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      aria-label={isVoiceEnabled ? "Turn voice off" : "Turn voice on"}
+                      onClick={() => {
+                        if (isVoiceEnabled) {
+                          window.speechSynthesis.cancel();
+                          setIsSpeaking(false);
+                        }
+                        setIsVoiceEnabled(prev => !prev);
+                      }}
+                      className="relative z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+                      style={{
+                        backgroundColor: isVoiceEnabled ? "#6366f1" : "#e5e7eb",
+                        color: isVoiceEnabled ? "#ffffff" : "#6b7280",
+                        boxShadow: isVoiceEnabled ? "0 0 0 2px #818cf8" : "none",
+                      }}
+                    >
+                      {isVoiceEnabled ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[8px] font-medium" style={{ color: isVoiceEnabled ? (isSpeaking ? "#6366f1" : "#6366f1") : "#9ca3af" }}>
+                    {isSpeaking ? "Speaking..." : isVoiceEnabled ? "Voice On" : "Voice Off"}
                   </span>
                 </div>
               </div>
@@ -984,6 +1036,8 @@ export const AIAssistant = () => {
                     size="sm"
                     className={`w-9 h-9 rounded-full p-0 flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600 border-red-500" : ""}`}
                     onClick={() => {
+                      window.speechSynthesis.cancel(); // stop TTS when mic activates
+                      setIsSpeaking(false);
                       const rec = recognitionRef.current;
                       if (!rec) {
                         toast({
