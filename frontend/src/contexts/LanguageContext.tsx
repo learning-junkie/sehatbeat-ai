@@ -15,7 +15,9 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("sehatbeat_language");
+      const stored =
+        window.localStorage.getItem("sehatbeat-language") ??
+        window.localStorage.getItem("sehatbeat_language");
       if (stored === "en" || stored === "hi") {
         return stored;
       }
@@ -25,6 +27,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = (lang: Language) => {
     if (typeof window !== "undefined") {
+      window.localStorage.setItem("sehatbeat-language", lang);
       window.localStorage.setItem("sehatbeat_language", lang);
       // We also update the old key just in case some other code was relying on it
       window.localStorage.setItem("sehatbeat_lang", lang);

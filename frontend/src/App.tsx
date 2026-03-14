@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
-import { hiIN, enUS } from "@clerk/localizations";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import { BottomNavigation } from "@/components/navigation/BottomNavigation";
 import { AIAssistant } from "@/components/ai/AIAssistant";
 import LanguageLanding from "@/components/LanguageLanding";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
+import { getClerkLocalization } from "@/lib/clerkLocalization";
 import Index from "@/pages/index";
 import ClinicalDocs from "./pages/ClinicalDocs";
 import Symptomate from "./pages/Symptomate";
@@ -110,9 +110,9 @@ const AppContent = () => {
 
   // Render with Clerk authentication and Convex
   return (
-    <ClerkProvider 
-      publishableKey={PUBLISHABLE_KEY} 
-      localization={language === 'hi' ? hiIN : enUS}
+    <ClerkProvider
+      publishableKey={PUBLISHABLE_KEY}
+      localization={getClerkLocalization(language)}
     >
       <ConvexProviderWrapper>
         <QueryClientProvider client={queryClient}>
@@ -126,7 +126,7 @@ const AppContent = () => {
                   <SignedIn>
                     <TopNavigation />
                   </SignedIn>
-                  
+
                   <main className="w-full flex-1 flex flex-col">
                     <SignedOut>
                       <div className="flex-1 flex flex-col min-h-[80vh] items-center justify-center p-4 w-full">
@@ -150,7 +150,7 @@ const AppContent = () => {
                       </Routes>
                     </SignedIn>
                   </main>
-                  
+
                   <SignedIn>
                     <BottomNavigation />
                     <AIAssistant />
