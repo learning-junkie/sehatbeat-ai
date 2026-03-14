@@ -88,22 +88,15 @@ async function callNextSymptomAPI(
   history: { role: string; content: string }[] = []
 ): Promise<StructuredResponse> {
   const backendBase =
-    typeof import.meta !== "undefined" && import.meta.env?.VITE_BACKEND_URL
-      ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, "")
-      : "";
+    (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_BACKEND_URL
+      ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
+      : "") || "http://localhost:3000";
 
-  if (!backendBase) {
-    console.warn(
-      "[SehatBeat] VITE_BACKEND_URL is not set — API calls may fail. Check your .env file."
-    );
-  }
-
-  const url = backendBase
-    ? `${backendBase}/api/analyze-symptoms`
-    : "/api/analyze-symptoms";
+  const url = `${backendBase}/api/analyze-symptoms`;
+  console.log("🚀 Fetching:", url);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   try {
     const res = await fetch(url, {
@@ -176,11 +169,20 @@ async function callNextSymptomAPI(
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(
         language === "hi"
-          ? "विश्लेषण समय सीमा पार। कृपया कनेक्शन जांचें और फिर कोशिश करें।"
-          : "Analysis timed out. Please check your connection and try again."
+          ? "AI को जवाब देने में समय लग रहा है। कृपया पुनः प्रयास करें।"
+          : "AI is taking longer than usual. Please try again."
+      );
+    }
+    if (error instanceof TypeError && (error.message === "Failed to fetch" || error.message.includes("fetch"))) {
+      throw new Error(
+        language === "hi"
+          ? "सर्वर से कनेक्ट नहीं हो पाया। कृपया जांचें कि बैकएंड चल रहा है (localhost:3000)।"
+          : "Could not reach the server. Ensure the backend is running at http://localhost:3000."
       );
     }
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

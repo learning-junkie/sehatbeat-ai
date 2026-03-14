@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let symptoms = "";
   let isHindi = false;
@@ -10,8 +21,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     isHindi = false;
   }
-
-  console.log("Gemini hit:", symptoms);
+  console.log("🔥 API HIT:", { symptoms, language: isHindi ? "hi" : "en" });
+  console.log("🔑 KEY EXISTS:", !!process.env.GEMINI_API_KEY);
 
   const fallback = {
     problem: isHindi ? "सेवा अनुपलब्ध" : "Service Unavailable",
@@ -31,66 +42,67 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       : "This is for informational purposes only.",
   };
 
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_KEY) {
+    console.warn("[analyze-symptoms] GEMINI_API_KEY missing — returning fallback");
+    return jsonWithCors(fallback);
+  }
+
   try {
   // ── System prompt ────────────────────────────────────────────────────────────
-  const criticalInstruction = `CRITICAL: Respond ONLY with valid JSON starting with { and ending with }. No markdown, no code fences, no explanation. No preamble.\n\n`;
+  const systemPrompt = isHindi
+    ? `महत्वपूर्ण: आप SehatBeat AI हैं, एक विशेषज्ञ चिकित्सा सहायक। आप केवल valid JSON object से जवाब दें — कोई अभिवादन नहीं, कोई "मैं कैसे मदद कर सकता हूं" नहीं, कोई सवाल नहीं। सीधे { से शुरू करें और } पर खत्म करें।
 
-  const systemPrompt =
-    criticalInstruction +
-    (isHindi
-      ? `आप SehatBeat AI हैं — एक विशेषज्ञ, सहानुभूतिपूर्ण भारतीय चिकित्सा सहायक।
-नीचे दिए गए JSON प्रारूप में ही जवाब दें। JSON के बाहर कुछ भी मत लिखें।
-यदि उपयोगकर्ता ने गलत वर्तनी (typo) की है, तो उसे सुधार कर समझें।
+जब भी कोई लक्षण बताए, तुरंत विश्लेषण करें। कभी भी "आप कैसे हैं" या "मैं कैसे मदद कर सकता हूं" मत पूछें। हमेशा सीधा चिकित्सा मार्गदर्शन दें।
 
-JSON schema:
+इसी JSON format में जवाब दें:
 {
-  "problem": "संभावित स्वास्थ्य समस्या",
+  "problem": "लक्षणों के आधार पर समस्या का नाम",
   "severity": "गंभीरता का विस्तृत विवरण",
   "severityLevel": "emergency | high | moderate | mild | info",
   "possibleCauses": ["कारण 1", "कारण 2"],
   "possibleConditions": ["संभावित बीमारी 1", "संभावित बीमारी 2"],
   "immediateSteps": ["तुरंत करें 1", "तुरंत करें 2"],
   "recommendations": ["सुझाव 1", "सुझाव 2"],
-  "whenToSeekHelp": ["यह होने पर डॉक्टर के पास जाएं"],
+  "whenToSeekHelp": ["यह होने पर डॉक्टर जाएं"],
   "specialist": "किस विशेषज्ञ से मिलें",
-  "doctorDirection": "डॉक्टर के पास कब और क्यों जाएं, कौन से टेस्ट करवाएं",
-  "disclaimer": "चिकित्सा अस्वीकरण"
+  "doctorDirection": "डॉक्टर के पास कब जाएं, कौन से टेस्ट करवाएं",
+  "disclaimer": "यह केवल जानकारी के लिए है। किसी डॉक्टर से परामर्श लें।"
 }
 
-severityLevel नियम:
-- emergency: सीने में दर्द, सांस न आना, बेहोशी, लकवा → doctorDirection में 112 और तुरंत अस्पताल लिखें
-- high: तेज बुखार, गंभीर दर्द → 24 घंटे में डॉक्टर
-- moderate: 2+ दिन से लक्षण → 3 दिन में डॉक्टर
-- mild: हल्के लक्षण → घरेलू उपाय पर्याप्त`
-      : `You are SehatBeat AI — an expert, empathetic Indian medical assistant.
-Respond ONLY in valid JSON matching the schema below. Nothing outside the JSON.
-If the user made a typo or spelling mistake in symptoms, intelligently correct and interpret it.
-Provide thorough, detailed medical analysis in English.
+टाइपो सुधार: faver=बुखार, hedache=सिरदर्द, pet dard=पेट दर्द। हमेशा समझकर विश्लेषण करें।`
+    : `CRITICAL: You are SehatBeat AI, an expert medical triage assistant. You MUST respond ONLY with a valid JSON object — no greetings, no "how can I help", no questions, no preamble, no markdown, no code fences. Start immediately with { and end with }.
 
-JSON schema (all fields required):
+When a user describes ANY symptom or health concern, immediately analyze it and return a detailed medical response. NEVER ask follow-up questions. NEVER say "how can I help you". NEVER give generic responses. Always give direct, specific medical guidance.
+
+If the user says "pain in abdomen" — immediately analyze abdominal pain causes, severity, steps.
+If the user says "fever" — immediately analyze fever severity, causes, treatment.
+If the user says anything health-related — analyze it immediately and completely.
+
+Respond ONLY with this exact JSON structure:
 {
-  "problem": "Name of the likely health condition",
-  "severity": "Detailed severity description with clinical context",
+  "problem": "specific condition name based on symptoms",
+  "severity": "detailed severity description with clinical context",
   "severityLevel": "emergency | high | moderate | mild | info",
-  "possibleCauses": ["Cause 1", "Cause 2", "Cause 3"],
-  "possibleConditions": ["Possible condition 1", "Possible condition 2"],
-  "immediateSteps": ["Step 1", "Step 2", "Step 3"],
-  "recommendations": ["Recommendation 1", "Recommendation 2"],
-  "whenToSeekHelp": ["Warning sign 1", "Warning sign 2"],
-  "specialist": "Specific type of specialist (e.g. Cardiologist, not just Doctor)",
-  "doctorDirection": "When and why to see a doctor, which tests to ask for (e.g. CBC, ECG, X-ray), what to tell the doctor",
-  "disclaimer": "Medical disclaimer"
+  "possibleCauses": ["cause 1", "cause 2", "cause 3"],
+  "possibleConditions": ["condition 1", "condition 2", "condition 3"],
+  "immediateSteps": ["step 1", "step 2", "step 3"],
+  "recommendations": ["recommendation 1", "recommendation 2"],
+  "whenToSeekHelp": ["warning sign 1", "warning sign 2"],
+  "specialist": "specific specialist type e.g. Gastroenterologist",
+  "doctorDirection": "when to see doctor, which tests to ask for, what to tell the doctor",
+  "disclaimer": "This is informational guidance only. Consult a licensed doctor for diagnosis."
 }
 
-severityLevel rules:
-- emergency: chest pain, breathing difficulty, unconsciousness, stroke, severe bleeding → doctorDirection MUST say call 112 and go to nearest hospital NOW
-- high: fever >103F, severe pain, persistent vomiting → see doctor within 24 hours
-- moderate: symptoms 2+ days, worsening → see doctor within 3 days
-- mild: minor self-limiting symptoms → home remedies sufficient
+severityLevel rules — be specific:
+- emergency: chest pain, difficulty breathing, loss of consciousness, severe bleeding, stroke symptoms → doctorDirection must say call 112 NOW
+- high: severe pain, high fever above 103F, persistent vomiting → see doctor within 24 hours
+- moderate: symptoms lasting 2+ days, moderate pain → see doctor within 3 days
+- mild: minor self-limiting symptoms → home care is sufficient
 
-For doctorDirection always include: urgency timeline, specific tests to request, what to describe to doctor.
-For specialist be specific: Cardiologist, Pulmonologist, Gastroenterologist, ENT, Dermatologist, General Physician etc.
-Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache", "stomic" as "stomach" etc.`);
+For abdominal pain specifically: identify location (upper/lower/left/right), possible causes (gastritis, appendicitis, IBS, kidney stones etc), red flags to watch for.
+For every symptom: be specific, clinical, and actionable. Never be vague.
+Typo handling: faver=fever, hedache=headache, stomik=stomach, chst=chest, brekhing=breathing — always interpret and analyze.`;
 
   // ── Helper: parse AI JSON response ──────────────────────────────────────────
   function parseAIResponse(raw: string) {
@@ -108,11 +120,8 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
   }
 
   // ── Gemini 1.5 Flash ────────────────────────────────────────────────────────
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-
-  if (GEMINI_KEY) {
-    try {
-      const geminiRes = await fetch(
+  try {
+    const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST",
@@ -142,7 +151,7 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
         const errorBody = await geminiRes.text().catch(() => "");
         console.error(`[Gemini] Error ${geminiRes.status}:`, errorBody);
         // Return static fallback instead of throwing — never return a 500
-        return NextResponse.json(fallback);
+        return jsonWithCors(fallback);
       }
 
       const geminiData = await geminiRes.json();
@@ -152,21 +161,29 @@ Typo handling: if user writes "faver" treat as "fever", "hedache" as "headache",
       if (raw) {
         try {
           const parsed = parseAIResponse(raw);
-          return NextResponse.json(parsed);
+          return jsonWithCors(parsed);
         } catch {
           // JSON parse failed — fall through to static fallback
           console.error("[Gemini] JSON parse failed for raw:", raw.slice(0, 200));
         }
       }
-    } catch (error) {
-      console.error("[Gemini] API call failed:", error);
-      // Gemini failed — fall through to static fallback
-    }
+  } catch (error) {
+    console.error("[Gemini] API call failed:", error);
+    // Gemini failed — fall through to static fallback
   }
 
   // ── Static fallback ──────────────────────────────────────────────────────────
-  return NextResponse.json(fallback);
-  } catch {
-    return NextResponse.json(fallback);
+  return jsonWithCors(fallback);
+  } catch (err) {
+    console.error("Route error:", err);
+    return jsonWithCors(fallback);
   }
+}
+
+function jsonWithCors(body: object): NextResponse {
+  const res = NextResponse.json(body);
+  res.headers.set("Access-Control-Allow-Origin", "*");
+  res.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return res;
 }

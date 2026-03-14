@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Activity, MessageCircle, PlayCircle, Shield, Users, Zap } from "lucide-react";
+import { Activity, MessageCircle, PlayCircle, Shield, Users, Zap, Send, Mic, MicOff } from "lucide-react";
 import heroImage from "@/assets/medical.jpg";
 import AIChatbot from "@/components/AIChatbot";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,12 +14,20 @@ const getSuggestedPrompts = (t: (key: string) => string) => [
   t("home.aiCardPrompt4")
 ];
 
+const SpeechRecognitionAPI = typeof window !== "undefined" ? (window.SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
+
 export const HeroSection = () => {
   const { t } = useLanguage();
   const [chatQuestion, setChatQuestion] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const demoModalRef = useRef<HTMLDivElement | null>(null);
+
+  // Voice symptom input (opens floating AIAssistant via event)
+  const [voiceInput, setVoiceInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const voiceSubmitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAskAI = (event: React.FormEvent) => {
     event.preventDefault();
@@ -31,6 +39,53 @@ export const HeroSection = () => {
     setChatQuestion(prompt);
     setIsChatOpen(true);
   };
+
+  // Open floating AIAssistant with pre-filled message (used by voice bar)
+  const openAIWithMessage = (message: string) => {
+    const trimmed = (message || voiceInput || "").trim();
+    window.dispatchEvent(new CustomEvent("sehatbeat-open-ai", { detail: { message: trimmed } }));
+    if (trimmed) setVoiceInput("");
+  };
+
+  // Init SpeechRecognition for landing page voice input
+  useEffect(() => {
+    if (!SpeechRecognitionAPI) return;
+    const rec = new SpeechRecognitionAPI();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = (typeof window !== "undefined" && window.localStorage?.getItem("sehatbeat_lang") === "hi") ? "hi-IN" : "en-IN";
+    rec.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((r: any) => r[0]?.transcript ?? "")
+        .join(" ")
+        .trim();
+      if (transcript) setVoiceInput((prev) => (prev ? `${prev} ${transcript}` : transcript).trim());
+      const last = event.results[event.results.length - 1];
+      if (last?.isFinal && transcript) {
+        if (voiceSubmitTimeoutRef.current) clearTimeout(voiceSubmitTimeoutRef.current);
+        const finalText = transcript;
+        voiceSubmitTimeoutRef.current = setTimeout(() => {
+          if (finalText) {
+            window.dispatchEvent(new CustomEvent("sehatbeat-open-ai", { detail: { message: finalText } }));
+            setVoiceInput("");
+          }
+          voiceSubmitTimeoutRef.current = null;
+        }, 1000);
+      }
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    return () => {
+      if (voiceSubmitTimeoutRef.current) clearTimeout(voiceSubmitTimeoutRef.current);
+      try {
+        rec.onresult = null;
+        rec.onend = null;
+        rec.onerror = null;
+        rec.stop();
+      } catch { /* ignore */ }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isDemoOpen) return;
@@ -201,6 +256,65 @@ export const HeroSection = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Voice symptom input bar — opens floating AIAssistant */}
+          <div className="mt-6 max-w-2xl w-full mx-auto">
+            <div className="bg-white border border-gray-200 shadow-lg rounded-full px-4 py-3 flex items-center gap-2">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 rounded-full flex-shrink-0 bg-teal-500 text-white hover:bg-teal-600"
+                onClick={() => openAIWithMessage(voiceInput)}
+                aria-label="Send to AI"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+              <Input
+                type="text"
+                value={voiceInput}
+                onChange={(e) => setVoiceInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    openAIWithMessage(voiceInput);
+                  }
+                }}
+                placeholder={t("home.voicePlaceholder")}
+                className="flex-1 border-0 bg-transparent px-2 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                aria-label={t("home.voicePlaceholder")}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className={`h-9 w-9 rounded-full flex-shrink-0 ${isListening ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-500 text-white hover:bg-teal-600"}`}
+                onClick={() => {
+                  const rec = recognitionRef.current;
+                  if (!rec) return;
+                  try {
+                    if (isListening) {
+                      rec.stop();
+                      setIsListening(false);
+                    } else {
+                      rec.start();
+                      setIsListening(true);
+                    }
+                  } catch {
+                    setIsListening(false);
+                  }
+                }}
+                aria-label={isListening ? "Stop listening" : "Start voice input"}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+            </div>
+            {isListening && (
+              <p className="text-center text-sm text-red-500 mt-2 animate-pulse">
+                Listening...
+              </p>
+            )}
           </div>
 
           {/* Feature Pills */}
