@@ -19,12 +19,12 @@ function jsonWithCors(body: object): NextResponse {
   return res;
 }
 
-const GEMINI_PROMPT = `Generate a JSON array of 25 common medicines available in India. Each item must have: name (brand name), genericName, category (e.g. Antibiotic, Painkiller, Antacid, Antihistamine, Vitamin), uses (array of 2-3 use cases), dosage (standard adult dose), sideEffects (array of 2-3), price (in INR, realistic), requiresPrescription (boolean), manufacturer (Indian pharma company). Return ONLY valid JSON array starting with [ and ending with ]. No markdown.`;
+const GEMINI_PROMPT = `Generate a JSON array of 15 Indian doctors across different specializations. Each doctor must have: id (unique string), name (Indian doctor name with Dr. prefix), specialization (e.g. Cardiologist, Neurologist, Dermatologist, Pediatrician, Orthopedist, Gynecologist, Ophthalmologist, Gastroenterologist, ENT, Psychiatrist), qualifications (e.g. MBBS, MD Cardiology), hospital (real Indian hospital name), city (Indian city), rating (between 4.0 and 5.0), experience (years, between 5 and 25), patients (number like 1000+, 2000+), consultationFee (in INR, realistic), available (today or next week), languages (array, always include Hindi, optionally English), distance (km away, between 0.5 and 10), verified (true). Return ONLY valid JSON array starting with [ and ending with ]. No markdown.`;
 
 export async function GET(): Promise<NextResponse> {
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_KEY) {
-    return jsonWithCors({ medicines: [] });
+    return jsonWithCors({ doctors: [] });
   }
 
   try {
@@ -45,16 +45,16 @@ export async function GET(): Promise<NextResponse> {
     );
 
     if (!geminiRes.ok) {
-      return jsonWithCors({ medicines: [] });
+      return jsonWithCors({ doctors: [] });
     }
 
     const data = await geminiRes.json();
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const jsonMatch = raw.match(/\[[\s\S]*\]/);
     const jsonStr = jsonMatch ? jsonMatch[0] : "[]";
-    const medicines = JSON.parse(jsonStr);
-    return jsonWithCors({ medicines: Array.isArray(medicines) ? medicines : [] });
+    const doctors = JSON.parse(jsonStr);
+    return jsonWithCors({ doctors: Array.isArray(doctors) ? doctors : [] });
   } catch {
-    return jsonWithCors({ medicines: [] });
+    return jsonWithCors({ doctors: [] });
   }
 }
