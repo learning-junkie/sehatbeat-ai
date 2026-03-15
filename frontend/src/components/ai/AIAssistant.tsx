@@ -90,7 +90,7 @@ async function callNextSymptomAPI(
   const backendBase =
     (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_BACKEND_URL
       ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
-      : "") || "http://localhost:3000";
+      : "") || "https://sehatbeat-ai-zwyk.onrender.com";
 
   const url = `${backendBase}/api/analyze-symptoms`;
   console.log("🚀 Fetching:", url);
@@ -176,8 +176,8 @@ async function callNextSymptomAPI(
     if (error instanceof TypeError && (error.message === "Failed to fetch" || error.message.includes("fetch"))) {
       throw new Error(
         language === "hi"
-          ? "सर्वर से कनेक्ट नहीं हो पाया। कृपया जांचें कि बैकएंड चल रहा है (localhost:3000)।"
-          : "Could not reach the server. Ensure the backend is running at http://localhost:3000."
+          ? "सर्वर से कनेक्ट नहीं हो पाया। कृपया अपने नेटवर्क कनेक्शन की जांच करें।"
+          : "Could not reach the server. Please check your network connection."
       );
     }
     throw error;
