@@ -87,10 +87,7 @@ async function callNextSymptomAPI(
   language: AppLanguage = "en",
   history: { role: string; content: string }[] = []
 ): Promise<StructuredResponse> {
-  const backendBase =
-    (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_BACKEND_URL
-      ? String((import.meta as any).env.VITE_BACKEND_URL).replace(/\/+$/, "")
-      : "") || "https://sehatbeat-ai-zwyk.onrender.com";
+  const backendBase = "https://sehatbeat-ai-zwyk.onrender.com"
 
   const url = `${backendBase}/api/analyze-symptoms`;
   console.log("🚀 Fetching:", url);
@@ -138,7 +135,7 @@ async function callNextSymptomAPI(
       throw new Error(
         language === "hi"
           ? "AI से अप्रत्याशित प्रतिक्रिया मिली। कृपया पुनः प्रयास करें।"
-          : "Received an unexpected response from AI. Please try again."
+          : "render api failed."
       );
     }
 
